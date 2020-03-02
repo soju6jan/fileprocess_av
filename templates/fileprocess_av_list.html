@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div>
+  <form id="form_search" class="form-inline" style="text-align:left">
+    <div class="container-fluid">
+      <div class="row show-grid">
+        <span class="col-md-4">
+          <select id="av_type" name="av_type" class="form-control form-control-sm">
+            <option value="all">전체</option>
+            <option value="censored">Censored</option>
+            <option value="uncensored">Uncensored</option>
+            <option value="western">Western</option>
+            <option value="notmal">Normal</option>
+          </select>
+          <select id="option" name="option" class="form-control form-control-sm">
+            <option value="all">전체</option>
+            <option value="0">정상</option>
+            <option value="1">처리실패</option>
+            <option value="2">중복삭제</option>
+            <option value="3">유저타겟</option>
+          </select>
+        </span>
+        <span class="col-md-8">
+          <input id="search_word" name="search_word" class="form-control form-control-sm w-75" type="text" placeholder="원본파일명" aria-label="Search">
+          <button id="search" class="btn btn-sm btn-outline-success">검색</button>
+          <button id="reset_btn" class="btn btn-sm btn-outline-success">리셋</button>
+        </span>
+      </div>
+    </div>
+  </form>
+  <div id='page1'></div>
+  {{ macros.m_hr_head_top() }}
+  {{ macros.m_row_start('0') }}
+  {{ macros.m_col(2,  macros.m_strong('Created Time')) }}
+  {{ macros.m_col(1,  macros.m_strong('Type')) }}
+  {{ macros.m_col(1,  macros.m_strong('Move')) }}
+  {{ macros.m_col(4,  macros.m_strong('Source')) }}
+  {{ macros.m_col(4,  macros.m_strong('Target')) }}
+  {{ macros.m_row_end() }}
+  {{ macros.m_hr_head_bottom() }}
+  <div id="list_div"></div>
+  <div id='page2'></div>
+</div>
+
+
+<script type="text/javascript">
+var package_name = "{{arg['package_name'] }}";
+var current_data = null;
+
+$(document).ready(function(){
+  request_search('1');
+});
+
+$("#search").click(function(e) {
+  e.preventDefault();
+  request_search('1');
+});
+
+$("body").on('click', '#page', function(e){
+  e.preventDefault();
+  request_search($(this).data('page'));
+});
+
+$("#reset_btn").click(function(e) {
+  e.preventDefault();
+  document.getElementById("order").value = 'desc';
+  document.getElementById("option").value = 'all';
+  document.getElementById("search_word").value = '';
+  request_search('1')
+});
+
+
+function request_search(page) {
+  var formData = get_formdata('#form_search')
+  formData += '&page=' + page;
+  $.ajax({
+    url: '/' + package_name + '/ajax/web_list',
+    type: "POST", 
+    cache: false,
+    data: formData,
+    dataType: "json",
+    success: function (data) {
+      current_data = data;
+      window.scrollTo(0,0);
+      make_list(data.list)
+      make_page_html(data.paging)
+    }
+  });
+}  
+
+$("#reset_btn").click(function(e) {
+  e.preventDefault();
+  document.getElementById("av_type").value = 'desc';
+  document.getElementById("option").value = 'all';
+  document.getElementById("search_word").value = '';
+  request_search('1')
+});
+
+function make_list(data) {
+  str = ''
+  for (i in data) {
+    console.log(data[i]);
+    str += m_row_start();
+    tmp = data[i].id + '<br>' + data[i].created_time;
+
+    str += m_col(2, tmp);
+    str += m_col(1, data[i].av_type);
+    
+    if (data[i].move_type == 0) {
+      tmp = '정상'
+    } else if (data[i].move_type == 1) {
+      tmp = '처리실패'
+    } else if (data[i].move_type == 2) {
+      tmp = '중복삭제'
+    } else if (data[i].move_type == 3) {
+      tmp = '유저타겟'
+    } else {
+      tmp = '--'
+    }
+    str += m_col(1, tmp);
+
+    tmp = data[i].source_dir + '<br>';
+    tmp += data[i].source_filename;
+    str += m_col(4, tmp);
+
+    tmp = data[i].target_dir + '<br>';
+    tmp += data[i].target_filename;
+    str += m_col(4, tmp);
+   
+    str += m_row_end();
+    if (i != data.length -1) str += m_hr();
+  }
+  document.getElementById("list_div").innerHTML = str;
+}
+
+
+</script>    
+{% endblock %}
