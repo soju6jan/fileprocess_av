@@ -227,4 +227,4 @@ class ModelItem(db.Model):
         else:
             query = query.order_by(ModelItem.id)
 
-        return query
+        return query    
