@@ -36,6 +36,7 @@ class Logic(object):
         'censored_meta_dmm_path' : '',
         'censored_meta_javdb_path' : '',
         'censored_meta_no_path' : '',
+        'include_original_filename' : 'True',
 
         'uncensored_use' : 'False',
         'uncensored_use_meta' : 'False',
@@ -43,11 +44,9 @@ class Logic(object):
         'uncensored_target_path' : '',
         'uncensored_temp_path' : '',
         'uncensored_min_size' : '100',
-
         'uncensored_meta_match_path' : '',
         'uncensored_meta_unmatch_path' : '',
         
-
         'western_use' : 'False',
         'western_download_path' : '',
         'western_remove_ext' : '',
@@ -57,16 +56,12 @@ class Logic(object):
         'western_temp_path' : '',
 
         
-
-        'normal1_use' : 'False',
-        'normal1_download_path' : '',
-        'normal1_target_path' : '',
-        'normal1_min_size' : '100',
-        'normal2_use' : 'False',
-        'normal2_download_path' : '',
-        'normal2_target_path' : '',
-        'normal2_min_size' : '100',
-        'include_original_filename' : 'True',
+        'normal_use' : 'False',
+        'normal_download_path' : '',
+        'normal_target_path' : '',
+        'normal_temp_path' : '',
+        'normal_min_size' : '100',
+        
     }
 
     @staticmethod

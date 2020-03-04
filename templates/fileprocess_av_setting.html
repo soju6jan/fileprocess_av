@@ -19,7 +19,7 @@
   <div class="tab-content" id="nav-tabContent">
     <!-- 일반 -->
     {{ macros.m_tab_content_start('normal', true) }}
-      {{ macros.setting_scheduler_button(arg['is_include'], arg['is_running']) }}
+      {{ macros.setting_scheduler_button(arg['scheduler'], arg['is_running']) }}
       {{ macros.setting_input_int('interval', '파일 처리 실행 주기', value=arg['interval'], min='1', placeholder='2', desc='minute 단위') }}
       {{ macros.setting_checkbox('auto_start', '시작시 자동실행', value=arg['auto_start'], desc='On : 시작시 자동으로 스케쥴러에 등록됩니다.') }}
       {{ macros.setting_input_int('web_page_size', '웹 페이지당 게시물 수', value=arg['web_page_size'], min='1', placeholder='30') }}
@@ -64,11 +64,10 @@
        
 
 
-
     {{ macros.m_tab_content_start('western', false) }}
       {{ macros.setting_checkbox('western_use', 'Western 사용', value=arg['western_use']) }}
       <div id="western_use_div" class="collapse">
-      {{ macros.setting_input_text('western_download_path', '다운로드 경로', desc=['Western 영상을 다운받은 경로입니다.', '2개 이상일 경우 , 구분자 | 또는 엔터'], value=arg['western_download_path']) }}
+      {{ macros.setting_input_textarea('western_download_path', '다운로드 경로', desc=['Western 영상을 다운받은 경로입니다.', '2개 이상일 경우 , 구분자 | 또는 엔터'], value=arg['western_download_path'], row='3') }}
       
       {{ macros.setting_input_text('western_remove_ext', '폴더내 삭제 확장자', desc=['폴더내 특정 확장자를 삭제합니다. 구분자 |', 'Western은 폴더에서 파일을 꺼내지 않고 폴더 통채로 이동합니다.'], value=arg['western_remove_ext']) }}
 
@@ -85,11 +84,12 @@
 
 
     {{ macros.m_tab_content_start('etc', false) }}
-      {{ macros.setting_checkbox('normal2_use', '일반2 사용', value=arg['normal2_use']) }}
-      <div id="normal2_use_div" class="collapse" style="">
-      {{ macros.setting_input_text('normal2_download_path', '일반2 다운로드 경로', desc=['일반2 영상을 다운받은 경로입니다.', '2개 이상일 경우 , 구분자'], value=arg['normal2_download_path']) }}
-      {{ macros.setting_input_text('normal2_target_path', '일반2 라이브러리 경로', desc=['일반2 영상 파일이 정리될 폴더입니다.'], value=arg['normal2_target_path']) }}
-      {{ macros.setting_input_int('normal2_min_size', '일반2 최소 크기', value=arg['normal1_min_size'], placeholder='100', desc=['메가단위']) }}
+      {{ macros.setting_checkbox('normal_use', '일반 사용', value=arg['normal_use']) }}
+      <div id="normal_use_div" class="collapse" style="">
+      {{ macros.setting_input_textarea('normal_download_path', '다운로드 경로', desc=['일반 영상을 다운받은 경로입니다.', '2개 이상일 경우 , 구분자 | 또는 엔터 |'], value=arg['normal_download_path'], row='3') }}
+      {{ macros.setting_input_textarea('normal_target_path', '라이브러리 경로', desc=['일반 영상 파일이 정리될 폴더입니다.'], value=arg['normal_target_path'], row='3') }}
+      {{ macros.setting_input_text('normal_temp_path', '이동 실패시', desc=['타겟 폴더가 없을 경우 파일이 이동할 폴더입니다.'], value=arg['normal_temp_path']) }}
+      {{ macros.setting_input_int('normal_min_size', '일반2 최소 크기', value=arg['normal_min_size'], placeholder='50', desc=['메가단위']) }}
       </div>
     {{ macros.m_tab_content_end() }}
 
@@ -111,7 +111,7 @@ $(document).ready(function(){
   use_collapse("censored_use")
   use_collapse("uncensored_use")
   use_collapse("western_use")
-  use_collapse("normal2_use")
+  use_collapse("normal_use")
   if (parseInt("{{arg['censored_use_meta']}}")>= 1) {
     $('#censored_use_meta_div').collapse('show')
   }
@@ -150,6 +150,15 @@ $('input[type=radio][name=western_use_meta]').change(function() {
 });
 
 
+$('input[type=radio][name=normal_use_meta]').change(function() {
+  if (this.value == 0) {
+    $('#normal_use_meta_div').collapse('hide')
+  } else {
+    $('#normal_use_meta_div').collapse('show')
+  }
+});
+
+
 $('#censored_use').change(function() {
   use_collapse('censored_use');
 });
@@ -160,8 +169,8 @@ $('#uncensored_use').change(function() {
 $('#western_use').change(function() {
   use_collapse('western_use');
 });
-$('#normal2_use').change(function() {
-  use_collapse('normal2_use');
+$('#normal_use').change(function() {
+  use_collapse('normal_use');
 });
 
 </script>    

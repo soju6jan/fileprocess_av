@@ -28,7 +28,7 @@ from .model import ModelSetting, ModelItem
 blueprint = Blueprint(package_name, package_name, url_prefix='/%s' %  package_name, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 
 menu = {
-    'main' : [package_name, 'AV2'],
+    'main' : [package_name, 'AV'],
     'sub' : [
         ['setting', '설정'], ['list', '처리결과'], ['log', '로그']
     ],

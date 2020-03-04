@@ -25,6 +25,8 @@ from .model import ModelSetting, ModelItem
 class LogicNormal(object):
     @staticmethod
     def scheduler_function():
+        #LogicNormal.task()
+        #return
         if app.config['config']['use_celery']:
             result = LogicNormal.task.apply_async()
             result.get()
@@ -43,66 +45,39 @@ class LogicNormal(object):
             
             if ModelSetting.get_bool('uncensored_use'):
                 LogicNormal.process_uncensored()
-            return
-          
 
-            for tmp in ['normal1', 'normal2']:
-                if ModelSetting.query.filter_by(key='%s_use' % tmp).first().value == 'True':
-                    job = {}
-                    job['type'] = 'normal'
-                    job['source'] = ModelSetting.query.filter_by(key='%s_download_path' % tmp).first().value.split(',')
-                    job['target'] = ModelSetting.query.filter_by(key='%s_target_path' % tmp).first().value.split(',')
-                    job['size'] = int(ModelSetting.query.filter_by(key='%s_min_size' % tmp).first().value)
-                    if job['source'][0] != '' and job['target'][0] != '':
-                        job_list.append(job)
-            logger.debug('JOB_LIST :%s', job_list)
+            if ModelSetting.get_bool('western_use'):
+                LogicNormal.process_western()
 
-            for job in job_list:
-                for path in job['source']:
-                    FileProcess.remove_small_file_and_move_target(path.strip(), job['size'])
-                if job['type'] == 'censored':
-                    LogicNormal.censored_move_prefer_path(job)
-                elif job['type'] == 'uncensored':
-                    LogicNormal.uncensored_move_prefer_path(job)
-                else:
-                    LogicNormal.normal_move_prefer_path(job)
+            if ModelSetting.get_bool('normal_use'):
+                LogicNormal.process_normal()
         except Exception as e: 
             logger.error('Exception:%s', e)
             logger.error(traceback.format_exc())
             return False
 
 
-
+    @staticmethod
+    def get_path_list(key):
+        tmps = ModelSetting.get_list(key)
+        ret = []
+        for t in tmps:
+            if t.endswith('*'):
+                dirname = os.path.dirname(t)
+                listdirs = os.listdir(dirname)
+                for l in listdirs:
+                    ret.append(os.path.join(dirname, l))
+            else:
+                ret.append(t)
+        return ret
 
 
     @staticmethod
     def process_censored():
         try:
-            #source = ModelSetting.get_list('censored_download_path')
+            source = LogicNormal.get_path_list('censored_download_path')
+            target = LogicNormal.get_path_list('censored_target_path')
             
-            tmps = ModelSetting.get_list('censored_download_path')
-            source = []
-            for t in tmps:
-                if t.endswith('*'):
-                    dirname = os.path.dirname(t)
-                    listdirs = os.listdir(dirname)
-                    for l in listdirs:
-                        source.append(os.path.join(dirname, l))
-                else:
-                    source.append(t)
-            
-
-
-            target = []
-            tmps = ModelSetting.get_list('censored_target_path')
-            for t in tmps:
-                if t.endswith('*'):
-                    dirname = os.path.dirname(t)
-                    listdirs = os.listdir(dirname)
-                    for l in listdirs:
-                        target.append(os.path.join(dirname, l))
-                else:
-                    target.append(t)
 
             no_censored_path = ModelSetting.get('censored_temp_path')
             if len(source) == 0 or len(target) == 0 or no_censored_path == '':
@@ -220,19 +195,10 @@ class LogicNormal(object):
     @staticmethod
     def process_uncensored():
         try:
-            source = ModelSetting.get_list('uncensored_download_path')
+            source = LogicNormal.get_path_list('uncensored_download_path')
+            target = LogicNormal.get_path_list('uncensored_target_path')
 
             
-            target = []
-            tmps = ModelSetting.get_list('uncensored_target_path')
-            for t in tmps:
-                if t.endswith('*'):
-                    dirname = os.path.dirname(t)
-                    listdirs = os.listdir(dirname)
-                    for l in listdirs:
-                        target.append(os.path.join(dirname, l))
-                else:
-                    target.append(t)
             # 폴더목록 넣기
             target_child_list = []
             for t in target:
@@ -343,158 +309,159 @@ class LogicNormal(object):
     
 
 
-
-  
     
 
-
     @staticmethod
-    def uncensored_move_prefer_path(job):
-        target_list = {}
-        for tmp in job['target']:
-            filelist = os.listdir(tmp.strip())
-            for key in filelist:
-                if os.path.isdir(os.path.join(tmp.strip(), key)):
-                    target_list[key] = os.path.join(tmp.strip(), key)
-        
-
+    def process_western():
         try:
-            count = 0
-            for path in job['source']:
+            source = LogicNormal.get_path_list('western_download_path')
+            target = LogicNormal.get_path_list('western_target_path')
+
+            target_child_list = []
+            for t in target:
+                listdirs = os.listdir(t)
+                for tt in listdirs:
+                    target_child_list.append(os.path.join(t, tt))
+
+            no_type_path = ModelSetting.get('western_temp_path')
+            if len(source) == 0 or len(target) == 0 or no_type_path == '':
+                logger.info('Error western. path info is empty')
+                return
+            # 쓰레기 정리
+            ext_list = ModelSetting.get_list('western_remove_ext')
+            if ext_list:
+                for path in source:
+                    FileProcess.remove_match_ext(path, ext_list)
+
+            use_meta = ModelSetting.get('western_use_meta')
+            for path in source:
                 filelist = os.listdir(path.strip())
                 for filename in filelist:
+                    target_folder = None
                     file_path = os.path.join(path, filename)
-                    if os.path.isdir(file_path):
-                        continue
+                    entity = ModelItem('western', path, filename)
+
                     try:
-                        entity = ModelAVFile('uncensored', path, filename)
-
-                        #time.sleep(2)
-                        newfilename = LogicNormal.get_plex_filename_uncensored(filename)
-                        if newfilename is None:
-                            newfilename = filename.lower()
-
-                        entity.target_filename = newfilename
-                        dest_filepath = os.path.join(job['target'][0].strip(), newfilename)
-                        entity.target_dir = job['target'][0].strip()
-                        entity.move_type = 3
-                        for key, value in target_list.items():
-                            #if newfilename.lower().find(key.lower()) != -1:
-                            if newfilename.lower().startswith(key.lower()):
-                                dest_filepath = os.path.join(value, newfilename)
-                                entity.target_dir = value
+                        if use_meta == '1':
+                            data = FileProcess.search(filename, only_javdb=True)
+                            if data and len(data) == 1 and data[0]['score'] >= 95 or len(data)>1 and data[0]['score']==100:
+                                target_folder = os.path.join(ModelSetting.get('western_meta_match_path'), data[0]['id_show'].split('.')[0])
+                                #logger.debug()
                                 entity.move_type = 0
-                                break
-                        if entity.move_type != 0:
-                            for key, value in target_list.items():
-                                if newfilename.lower().find(key.lower()) != -1:
-                                    dest_filepath = os.path.join(value, newfilename)
-                                    entity.target_dir = value
-                                    entity.move_type = 0
-                                    break
+                                entity.target_dir = target_folder
+                                entity.target_filename = filename
 
+                                if not os.path.exists(target_folder):
+                                    os.makedirs(target_folder)
+
+                        if target_folder is None:
+                            for t in target_child_list:
+                                dirname = os.path.basename(t)
+                                if filename.find(dirname) != -1:
+                                    target_folder = t
+                                    entity.move_type = 3
+                                    break
+                            if target_folder is None: 
+                                logger.debug('NOT WESTERN!!!! : %s ' % filename)
+                                target_folder = no_type_path
+                                entity.move_type = 1
+                                
+                        
+                        #if target_folder is None:
+                        entity.target_dir = target_folder
+                        entity.target_filename = filename
+
+                        dest_filepath = os.path.join(target_folder, filename)
                         if os.path.exists(dest_filepath):
                             logger.debug('EXISTS : %s', dest_filepath)
-                            #os.remove(dest_filepath)
-                            os.remove(os.path.join(path, filename))
+                            os.remove(file_path)
                             entity.move_type = 2
                             continue
+                        logger.debug('MOVE : %s => %s', filename, dest_filepath)
                         shutil.move(os.path.join(path, filename), dest_filepath)
-                        count += 1
+
                     except Exception as e:
                         logger.debug('Exception:%s', e)
                         logger.debug(traceback.format_exc())
                     finally:
                         entity.save()
-                        #if count == 30: breakz
-                        #shutil.move(os.path.join(item[0], file), dest_filepath)
+                        pass
+                    
+        except Exception as e:
+            logger.debug('Exception:%s', e)
+            logger.debug(traceback.format_exc())
+    
+
+
+
+    @staticmethod
+    def process_normal():
+        try:
+            source = LogicNormal.get_path_list('normal_download_path')
+            target = LogicNormal.get_path_list('normal_target_path')
+
+
+            target_child_list = []
+            for t in target:
+                listdirs = os.listdir(t)
+                for tt in listdirs:
+                    target_child_list.append(os.path.join(t, tt))
+
+            no_type_path = ModelSetting.get('normal_temp_path')
+            if len(source) == 0 or len(target) == 0 or no_type_path == '':
+                logger.info('Error normal. path info is empty')
+                return
+            # 쓰레기 정리
+            for path in source:
+                FileProcess.remove_small_file_and_move_target(path, ModelSetting.get_int('normal_min_size'))
+            
+            for path in source:
+                filelist = os.listdir(path.strip())
+                for filename in filelist:
+                    target_folder = None
+                    file_path = os.path.join(path, filename)
+                    entity = ModelItem('normal', path, filename)
+
+                    try:
+                        for t in target_child_list:
+                            dirname = os.path.basename(t)
+                            if filename.find(dirname) != -1:
+                                target_folder = t
+                                entity.move_type = 0
+                                break
+                        if target_folder is None: 
+                            logger.debug('not match normal!!!! : %s ' % filename)
+                            target_folder = no_type_path
+                            entity.move_type = 1
+                                
+                        entity.target_dir = target_folder
+                        entity.target_filename = filename
+
+                        dest_filepath = os.path.join(target_folder, filename)
+                        if os.path.exists(dest_filepath):
+                            logger.debug('EXISTS : %s', dest_filepath)
+                            os.remove(file_path)
+                            entity.move_type = 2
+                            continue
+                        logger.debug('MOVE : %s => %s', filename, dest_filepath)
+                        shutil.move(os.path.join(path, filename), dest_filepath)
+
+                    except Exception as e:
+                        logger.debug('Exception:%s', e)
+                        logger.debug(traceback.format_exc())
+                    finally:
+                        entity.save()
+                        pass
+                    
         except Exception as e:
             logger.debug('Exception:%s', e)
             logger.debug(traceback.format_exc())
 
 
-    @staticmethod
-    def normal_move_prefer_path(job):
-        target_list = {}
-        for tmp in job['target']:
-            filelist = os.listdir(tmp.strip())
-            for key in filelist:
-                target_tmp = os.path.join(tmp.strip(), key)
-                if os.path.isdir(target_tmp):
-                    target_list[key] = target_tmp
-        count = 0
-        for path in job['source']:
-            path = path.strip()
-            filelist = os.listdir(path)
-            for filename in filelist:
-                try:
-                    entity = ModelAVFile('normal', path, filename)
-                    entity.target_filename = filename
-                    dest_filepath = ''
-                    for key, value in target_list.items():
-                        if filename.find(key) != -1:
-                            dest_filepath = os.path.join(value, filename)
-                            entity.target_dir = value
-                            entity.move_type = 0
-                            break
-                    if dest_filepath == '':
-                        #if job['temp'] == '':
-                        #    continue
-                        #dest_filepath = os.path.join(job['temp'], filename)
-                        dest_filepath = os.path.join(job['target'][0].strip(), filename)
-                        entity.target_dir = job['target'][0].strip()
-                        entity.move_type = 4
-                    if os.path.exists(dest_filepath):
-                        logger.debug('EXISTS : %s', dest_filepath)
-                        #os.remove(dest_filepath)
-                        os.remove(os.path.join(path, filename))
-                        entity.move_type = 2
-                        continue
-
-                    logger.debug('MOVE : %s %s' % (filename, dest_filepath))
-                    shutil.move(os.path.join(path, filename), dest_filepath)
-                    count += 1
-                except Exception as e:
-                    logger.debug('Exception:%s', e)
-                    logger.debug(traceback.format_exc())
-                finally:
-                    entity.save()
-
-                   
-
+    
 
     
     
-
-
-    @staticmethod
-    def filelist(req):
-        try:
-            ret = {}
-            page = 1
-            page_size = int(db.session.query(ModelSetting).filter_by(key='web_page_size').first().value)
-            job_id = ''
-            search = ''
-            if 'page' in req.form:
-                page = int(req.form['page'])
-            if 'search_word' in req.form:
-                search = req.form['search_word']
-            query = db.session.query(ModelAVFile)
-            if search != '':
-                query = query.filter(ModelAVFile.source_filename.like('%'+search+'%') | ModelAVFile.target_filename.like('%'+search+'%'))
-            count = query.count()
-            query = (query.order_by(desc(ModelAVFile.id))
-                        .limit(page_size)
-                        .offset((page-1)*page_size)
-                )
-            logger.debug('ModelAVFile count:%s', count)
-            lists = query.all()
-            ret['list'] = [item.as_dict() for item in lists]
-            ret['paging'] = Util.get_paging_info(count, page, page_size)
-            return ret
-        except Exception, e:
-            logger.debug('Exception:%s', e)
-            logger.debug(traceback.format_exc())
 
     
 
