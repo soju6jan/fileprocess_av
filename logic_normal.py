@@ -27,6 +27,7 @@ class LogicNormal(object):
     def scheduler_function():
         #LogicNormal.task()
         #return
+        logger.debug(app.config['config']['use_celery'])
         if app.config['config']['use_celery']:
             result = LogicNormal.task.apply_async()
             result.get()
@@ -80,6 +81,9 @@ class LogicNormal(object):
             
 
             no_censored_path = ModelSetting.get('censored_temp_path')
+            logger.debug(source)
+            logger.debug(target)
+            logger.debug(no_censored_path)
             if len(source) == 0 or len(target) == 0 or no_censored_path == '':
                 logger.info('Error censored. path info is empty')
                 return
@@ -152,7 +156,9 @@ class LogicNormal(object):
                                 logger.debug(search_name)
                                 data = FileProcess.search(search_name, do_trans=False)
                                 logger.debug(data)
-                                if len(data) == 1 and data[0]['score'] >= 95 or len(data)>1 and data[0]['score']==100:
+                                
+                                if (len(data) == 1 and data[0]['score'] >= 95) or (len(data)>1 and data[0]['score']==100):
+                                #if score_100_last_index != -1:
                                     find_meta = True
                                     if data[0]['meta'] == 'dmm':
                                         target_folder = os.path.join(ModelSetting.get('censored_meta_dmm_path'), folder_name)
