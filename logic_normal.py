@@ -150,7 +150,7 @@ class LogicNormal(object):
                                     search_name = search_name.replace(match.group('cd'), '')
 
                                 logger.debug(search_name)
-                                data = FileProcess.search(search_name)
+                                data = FileProcess.search(search_name, do_trans=False)
                                 logger.debug(data)
                                 if len(data) == 1 and data[0]['score'] >= 95 or len(data)>1 and data[0]['score']==100:
                                     find_meta = True
