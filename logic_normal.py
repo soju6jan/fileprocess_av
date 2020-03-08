@@ -153,7 +153,8 @@ class LogicNormal(object):
                                 data = FileProcess.search(search_name, do_trans=False)
                                 logger.debug(data)
                                 
-                                if (len(data) == 1 and data[0]['score'] >= 95) or (len(data)>1 and data[0]['score']==100):
+                                #if (len(data) == 1 and data[0]['score'] >= 95) or (len(data)>1 and data[0]['score']==100):
+                                if data and ((len(data) == 1 and data[0]['score'] >= 95) or (len(data)>1 and data[0]['score']==100)):
                                 #if score_100_last_index != -1:
                                     find_meta = True
                                     if data[0]['meta'] == 'dmm':
@@ -263,7 +264,8 @@ class LogicNormal(object):
                                 if tmp[1] is not None:
                                     data = FileProcess.search(filename, only_javdb=True)
                                     logger.debug(data)
-                                    if data and len(data) == 1 and data[0]['score'] >= 95 or len(data)>1 and data[0]['score']==100:
+                                    if data and ((len(data) == 1 and data[0]['score'] >= 95) or (len(data)>1 and data[0]['score']==100)):
+                                    #if data and len(data) == 1 and data[0]['score'] >= 95 or len(data)>1 and data[0]['score']==100:
                                         target_folder = os.path.join(ModelSetting.get('uncensored_meta_match_path'), folder_name)
 
                             if not os.path.exists(target_folder):
@@ -347,7 +349,7 @@ class LogicNormal(object):
                     try:
                         if use_meta == '1':
                             data = FileProcess.search(filename, only_javdb=True)
-                            if data and len(data) == 1 and data[0]['score'] >= 95 or len(data)>1 and data[0]['score']==100:
+                            if data and ((len(data) == 1 and data[0]['score'] >= 95) or (len(data)>1 and data[0]['score']==100)):
                                 target_folder = os.path.join(ModelSetting.get('western_meta_match_path'), data[0]['id_show'].split('.')[0])
                                 #logger.debug()
                                 entity.move_type = 0
