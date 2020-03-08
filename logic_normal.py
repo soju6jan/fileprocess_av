@@ -318,7 +318,8 @@ class LogicNormal(object):
         try:
             source = LogicNormal.get_path_list('western_download_path')
             target = LogicNormal.get_path_list('western_target_path')
-
+            logger.debug('source1 : %s', ModelSetting.get('western_download_path'))
+            logger.debug('source2 : %s', source)
             target_child_list = []
             for t in target:
                 listdirs = os.listdir(t)
