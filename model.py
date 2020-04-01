@@ -16,7 +16,6 @@ from framework.util import Util
 
 # 패키지
 from .plugin import logger, package_name
-from downloader import ModelDownloaderItem
 
 app.config['SQLALCHEMY_BINDS'][package_name] = 'sqlite:///%s' % (os.path.join(path_app_root, 'data', 'db', '%s.db' % package_name))
 #########################################################
