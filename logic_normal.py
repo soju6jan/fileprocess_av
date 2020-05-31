@@ -178,7 +178,8 @@ class LogicNormal(object):
                             os.remove(file_path)
                             entity.move_type = 2
                             
-                        shutil.move(os.path.join(path, filename), dest_filepath)
+                        if os.path.exists(file_path):
+                            shutil.move(os.path.join(path, filename), dest_filepath)
                         count += 1
                         
                     except Exception as e:
