@@ -151,7 +151,7 @@ class LogicNormal(object):
 
                                 logger.debug(search_name)
                                 data = FileProcess.search(search_name, do_trans=False)
-                                logger.debug(data)
+                                #logger.debug(data)
                                 
                                 #if (len(data) == 1 and data[0]['score'] >= 95) or (len(data)>1 and data[0]['score']==100):
                                 if data and ((len(data) == 1 and data[0]['score'] >= 95) or (len(data)>1 and data[0]['score']==100)):
