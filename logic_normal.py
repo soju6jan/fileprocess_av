@@ -208,7 +208,10 @@ class LogicNormal(object):
             for t in target:
                 listdirs = os.listdir(t)
                 for tt in listdirs:
-                    target_child_list.append(os.path.join(t, tt))
+                    #2020-06-16
+                    tmp  = os.path.join(t, tt)
+                    if os.path.isdir(tmp):
+                        target_child_list.append(tmp)
 
             no_type_path = ModelSetting.get('uncensored_temp_path')
             if len(source) == 0 or len(target) == 0 or no_type_path == '':
@@ -327,7 +330,11 @@ class LogicNormal(object):
             for t in target:
                 listdirs = os.listdir(t)
                 for tt in listdirs:
-                    target_child_list.append(os.path.join(t, tt))
+                    #2020-06-16
+                    tmp  = os.path.join(t, tt)
+                    if os.path.isdir(tmp):
+                        target_child_list.append(tmp)
+                    #target_child_list.append(os.path.join(t, tt))
 
             no_type_path = ModelSetting.get('western_temp_path')
             if len(source) == 0 or len(target) == 0 or no_type_path == '':
@@ -411,7 +418,11 @@ class LogicNormal(object):
             for t in target:
                 listdirs = os.listdir(t)
                 for tt in listdirs:
-                    target_child_list.append(os.path.join(t, tt))
+                    #target_child_list.append(os.path.join(t, tt))
+                    #2020-06-16
+                    tmp  = os.path.join(t, tt)
+                    if os.path.isdir(tmp):
+                        target_child_list.append(tmp)
 
             no_type_path = ModelSetting.get('normal_temp_path')
             if len(source) == 0 or len(target) == 0 or no_type_path == '':
