@@ -40,11 +40,11 @@ class LogicNormal(object):
             #2020-06-24
             # celery 에서는 proxy 항상 None
             try:
-                from av_agent.logic_normal import LogicNormal
-                LogicNormal.proxy_init()
+                from av_agent.logic_normal import LogicNormal as AgentLogicNormal
+                AgentLogicNormal.proxy_init()
             except:
                 pass
-            
+
             logger.debug('%s INIT SCHEDULER', __name__)
             
             job_list = []
