@@ -18,7 +18,8 @@ import framework.common.fileprocess as FileProcess
 
 # 패키지
 from .plugin import logger, package_name
-from .model import ModelSetting, ModelItem
+from .model import ModelSetting, ModelItem, SubModelItem
+from .logic_subcat import LogicSubcat
 #########################################################
 
 
@@ -51,6 +52,11 @@ class LogicNormal(object):
 
             if ModelSetting.get_bool('normal_use'):
                 LogicNormal.process_normal()
+
+            # by orial for Subcat recent
+            if ModelSetting.get_bool('subcat_use'):
+                LogicSubcat.process_recent()
+
         except Exception as e: 
             logger.error('Exception:%s', e)
             logger.error(traceback.format_exc())
@@ -180,6 +186,8 @@ class LogicNormal(object):
                             
                         if os.path.exists(file_path):
                             shutil.move(os.path.join(path, filename), dest_filepath)
+                            # 자막다운로드를 위해 SubModelItem 에 등록: by orial
+                            LogicSubcat.add_subcat_queue(os.path.join(dest_filepath, filename))
                         count += 1
                         
                     except Exception as e:
@@ -301,6 +309,8 @@ class LogicNormal(object):
                             continue
                         logger.debug('MOVE : %s => %s', filename, dest_filepath)
                         shutil.move(os.path.join(path, filename), dest_filepath)
+                        # 자막다운로드를 위해 SubModelItem 에 등록: by orial
+                        LogicSubcat.add_subcat_queue(os.path.join(dest_filepath, filename))
                         count += 1
                         
                         
