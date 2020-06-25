@@ -89,13 +89,6 @@ function request_search(page) {
   });
 }  
 
-$("#reset_btn").click(function(e) {
-  e.preventDefault();
-  document.getElementById("av_type").value = 'desc';
-  document.getElementById("option").value = 'all';
-  document.getElementById("search_word").value = '';
-  request_search('1')
-});
 
 function make_list(data) {
   str = ''

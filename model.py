@@ -2,9 +2,10 @@
 #########################################################
 # python
 import traceback
-from datetime import datetime
+from datetime import datetime,timedelta
 import json
 import os
+import re
 
 # third-party
 from sqlalchemy import or_, and_, func, not_, desc
@@ -225,5 +226,254 @@ class ModelItem(db.Model):
             query = query.order_by(desc(ModelItem.id))
         else:
             query = query.order_by(ModelItem.id)
+
+        return query 
+
+
+class SubModelItem(db.Model):
+    __tablename__ = '%s_sub_item' % package_name
+    __table_args__ = {'mysql_collate': 'utf8_general_ci'}
+    __bind_key__ = package_name
+
+    id = db.Column(db.Integer, primary_key=True)
+    created_time = db.Column(db.DateTime)
+    reserved = db.Column(db.JSON)
+
+    keyword    = db.Column(db.String)
+    media_path = db.Column(db.String)
+    media_name = db.Column(db.String)
+
+    last_search= db.Column(db.DateTime) # 최근검색시간
+    search_cnt = db.Column(db.Integer)  # 시도횟수
+
+    sub_status = db.Column(db.Integer)  # 0.자막없음, 1:타겟자막없음, 2:자막있음, 3:자막다운완료, 99:검색실패, 100:기간만료
+    sub_name   = db.Column(db.String)
+    sub_url    = db.Column(db.String)   # 자막파일url
+
+    plex_section_id = db.Column(db.String)
+    plex_metakey    = db.Column(db.String)
+
+    def __init__(self, keyword, media_path, media_name):
+        self.created_time = datetime.now()
+        self.keyword    = keyword
+        self.media_path = media_path
+        self.media_name = media_name
+        self.search_cnt = 0
+        self.last_search= datetime.now()
+        self.sub_status = 0
+        self.sub_url  = None
+        self.sub_name  = None
+        self.plex_section_id = None
+        self.plex_metakey = None
+
+
+    def __repr__(self):
+        return repr(self.as_dict())
+
+    def as_dict(self):
+        ret = {x.name: getattr(self, x.name) for x in self.__table__.columns}
+        ret['created_time'] = self.created_time.strftime('%m-%d %H:%M:%S') 
+        ret['last_search'] = self.last_search.strftime('%m-%d %H:%M:%S') 
+        return ret
+    
+    def remove(self):
+        try:
+            db.session.delete(self)
+            db.session.commit()
+        except Exception as e:
+            logger.error('Exception:%s', e)
+            logger.error(traceback.format_exc())
+
+    def save(self):
+        try:
+            db.session.add(self)
+            db.session.commit()
+        except Exception as e:
+            logger.error('Exception:%s', e)
+            logger.error(traceback.format_exc())
+
+    def sub_status_to_str(self):
+        if self.sub_status == 0:
+            return '자막없음'
+        elif self.sub_status == 1:
+            return '타겟자막없음'
+        elif self.sub_status == 2:
+            return '자막있음'
+        elif self.sub_status == 3:
+            return '자막다운완료'
+        elif self.sub_status == 99:
+            return '검색실패'
+        elif self.sub_status == 100:
+            return '만료'
+        else:
+            return '--'
+
+    @staticmethod
+    def print_entity(entity):
+        try:
+            logger.debug('------------------------------------------------')
+            logger.debug('id              : %d', entity.id)
+            logger.debug('created_time    : %s', entity.created_time)
+            logger.debug('keyword         : %s', entity.keyword)
+            logger.debug('media_path      : %s', entity.media_path)   
+            logger.debug('media_name      : %s', entity.media_name)   
+            logger.debug('search_cnt      : %d', entity.search_cnt)
+            logger.debug('last_search     : %s', entity.last_search)
+            logger.debug('sub_status      : %s(%d)', entity.sub_status_to_str(), entity.sub_status)
+            logger.debug('plex_section_id : %s', entity.plex_section_id if entity.plex_section_id is not None else 'None')
+            logger.debug('plex_metakey    : %s', entity.plex_metakey if entity.plex_metakey is not None else 'None')
+            logger.debug('------------------------------------------------')
+        except:
+            return False
+
+    @staticmethod
+    def parse_fname(path):
+        fpath, ext = os.path.splitext(path)
+    
+        name  = fpath[fpath.rfind('/')+1:]
+        fpath = fpath[:fpath.rfind('/')+1]
+    
+        if name.find(" [") > 0: key = name[:name.find('[')]
+        else: key = name
+    
+        # XXXX-123cdx 처리 -> XXXX-123
+        r = re.compile("cd[0-9]", re.I).search(key)
+        if r is not None: key = key[:r.start()]
+    
+        return key.strip(), fpath, name, ext
+
+    @staticmethod
+    def add_subcat_queue(target_filepath):
+        try:
+            keyword, dname, fname, ext = SubModelItem.parse_fname(target_filepath)
+            item = SubModelItem(keyword, dname, fname+ext)
+            item.save()
+            logger.debug('new file added(%s)', target_filepath)
+            return True
+        except Exception, e:
+            logger.error('Exception:%s', e)
+            logger.error(traceback.format_exc())
+            return False
+
+    @staticmethod
+    def get_entity(keyword):
+        try:
+            entity = db.session.query(SubModelItem).filter_by(keyword=keyword).with_for_update().first()
+            if entity is not None:
+                return entity
+        except:
+            return None
+
+    @staticmethod
+    def get_entity_by_id(data_id):
+        try:
+            entity = db.session.query(SubModelItem).filter_by(id=data_id).with_for_update().first()
+            if entity is not None:
+                return entity
+        except:
+            return None
+
+    @staticmethod
+    def get_recent_entities():
+        try:
+            currtime = datetime.now()
+
+            time_period = ModelSetting.get_int('subcat_time_period')
+            day_limit   = ModelSetting.get_int('subcat_day_limit')
+            logger.debug('get recent list: period(%d), limit(%d)', time_period, day_limit)
+
+            query = db.session.query(SubModelItem)
+
+            query = query.filter(SubModelItem.sub_status!=3)     # 자막다운받은경우제외
+            query = query.filter(SubModelItem.sub_status!=100)   # 만료된경우제외
+
+            ptime = currtime + timedelta(hours=-time_period)
+            #ptime = currtime + timedelta(minutes=-10) #임시코드
+            query = query.filter(or_(SubModelItem.last_search < ptime, SubModelItem.search_cnt == 0))   # 최근검색한 목록 제외
+            count = query.count()
+            if count == 0: return []
+            entities = query.all()
+
+            for entity in entities:
+                pday = entity.created_time + timedelta(days=day_limit)
+                if currtime > pday:
+                    lists.remove(entity)
+                    entity.sub_status = 100
+                    entity.save()
+
+            return entities
+
+        except Exception, e:
+            logger.error('Exception:%s', e)
+            logger.error(traceback.format_exc())
+            return None
+
+    @staticmethod
+    def get_all_entities():
+        try:
+            query = db.session.query(SubModelItem)
+            query = query.filter(SubModelItem.sub_status!=3)     # 자막다운받은경우제외
+            count = query.count()
+            entities = query.all()
+            return entities
+
+        except Exception, e:
+            logger.error('Exception:%s', e)
+            logger.error(traceback.format_exc())
+            return None
+
+    @staticmethod
+    def web_sublist(req):
+        try:
+            ret = {}
+            page = 1
+            page_size = ModelSetting.get_int('web_page_size')
+            job_id = ''
+            search = ''
+            if 'page' in req.form:
+                page = int(req.form['page'])
+            if 'search_word' in req.form:
+                search = req.form['search_word']
+            option = req.form['option']
+            order = req.form['order'] if 'order' in req.form else 'desc'
+
+            query = SubModelItem.make_query(search=search, option=option, order=order)
+            count = query.count()
+            query = query.limit(page_size).offset((page-1)*page_size)
+            logger.debug('SubModelItem count:%s', count)
+            lists = query.all()
+            ret['list'] = [item.as_dict() for item in lists]
+            ret['paging'] = Util.get_paging_info(count, page, page_size)
+            return ret
+        except Exception, e:
+            logger.error('Exception:%s', e)
+            logger.error(traceback.format_exc())
+
+    @staticmethod
+    def make_query(search='', option='all', order='desc'):
+        query = db.session.query(SubModelItem)
+        if search is not None and search != '':
+            if search.find('|') != -1:
+                tmp = search.split('|')
+                conditions = []
+                for tt in tmp:
+                    if tt != '':
+                        conditions.append(SubModelItem.media_name.like('%'+tt.strip()+'%') )
+                query = query.filter(or_(*conditions))
+            elif search.find(',') != -1:
+                tmp = search.split(',')
+                for tt in tmp:
+                    if tt != '':
+                        query = query.filter(SubModelItem.media_name.like('%'+tt.strip()+'%'))
+            else:
+                query = query.filter(SubModelItem.media_name.like('%'+search+'%'))
+
+        if option != 'all':
+            query = query.filter(SubModelItem.sub_status == option)
+
+        if order == 'desc':
+            query = query.order_by(desc(SubModelItem.id))
+        else:
+            query = query.order_by(SubModelItem.id)
 
         return query    

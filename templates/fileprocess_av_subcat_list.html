@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block content %}
+
+<ul class="nav nav-pills bg-light shadow text-dark" >
+  <li class="nav-item"><a class="nav-link" href="/fileprocess_av/subcat/setting">설정</a></li>
+  <li class="nav-item"><a class="nav-link active" href="/fileprocess_av/subcat/list">목록</a></li>
+</ul>
+<div class="d-inline-block"></div>
+
+<div>
+  <form id="form_search" class="form-inline" style="text-align:left">
+    <div class="container-fluid">
+      <div class="row show-grid">
+        <span class="col-md-4">
+          <select id="option" name="option" class="form-control form-control-sm">
+            <option value="all">전체</option>
+            <option value="0">자막없음</option>
+            <option value="1">타겟언어자막없음</option>
+            <option value="2">자막있음(다운전)</option>
+            <option value="3">자막다운완료</option>
+            <option value="99">검색실패</option>
+            <option value="100">만료</option>
+          </select>
+        </span>
+        <span class="col-md-6">
+          <input id="search_word" name="search_word" class="form-control form-control-sm w-75" type="text" placeholder="품번" aria-label="Search">
+          <button id="search" class="btn btn-sm btn-outline-success">검색</button>
+          <button id="reset_btn" class="btn btn-sm btn-outline-success">리셋</button>
+	</span>
+      </div>
+    </div>
+  </form>
+  <div id='page1'></div>
+  {{ macros.m_hr_head_top() }}
+  {{ macros.m_row_start('0') }}
+  {{ macros.m_col(2,  macros.m_strong('Created Time')) }}
+  {{ macros.m_col(1,  macros.m_strong('Keyword')) }}
+  {{ macros.m_col(2,  macros.m_strong('LastSearch')) }}
+  {{ macros.m_col(1,  macros.m_strong('Status')) }}
+  {{ macros.m_col(4,  macros.m_strong('Path/Filename')) }}
+  {{ macros.m_col(2,  macros.m_strong('Function')) }}
+  {{ macros.m_row_end() }}
+  {{ macros.m_hr_head_bottom() }}
+  <div id="list_div"></div>
+  <div id='page2'></div>
+</div>
+
+
+<script type="text/javascript">
+var package_name = "{{arg['package_name']}}";
+var current_data = null;
+
+$(document).ready(function(){
+  request_search('1');
+});
+
+$("#search").click(function(e) {
+  e.preventDefault();
+  request_search('1');
+});
+
+$("body").on('click', '#page', function(e){
+  e.preventDefault();
+  request_search($(this).data('page'));
+});
+
+$("body").on('click', '#subcat_research', function(e){
+  e.preventDefault();
+  subcat_research($(this).data('data_id'));
+});
+
+$("body").on('click', '#subcat_expire', function(e){
+  e.preventDefault();
+  subcat_expire($(this).data('data_id'));
+});
+
+$("body").on('click', '#subcat_remove', function(e){
+  e.preventDefault();
+  subcat_remove($(this).data('data_id'));
+});
+
+$("#reset_btn").click(function(e) {
+  e.preventDefault();
+  document.getElementById("order").value = 'desc';
+  document.getElementById("option").value = 'all';
+  document.getElementById("search_word").value = '';
+  request_search('1')
+});
+
+function subcat_research(data_id) {
+  $.ajax({
+    url: '/' + package_name + '/ajax/subcat_single',
+    type: "POST",
+    cache: false,
+    data: {data_id:data_id},
+    dataType: "json",
+    success: function (data) {
+      if ( data == 'Success') {
+        $.notify('<strong>재검색을 시작합니다.</strong>', {
+          type: 'success'
+        });
+      } else {
+        $.notify('<strong>Exception</strong>', {
+          type: 'warning'
+        });
+      }
+    }
+  });
+}
+
+function subcat_expire(data_id) {
+  $.ajax({
+    url: '/' + package_name + '/ajax/subcat_expire',
+    type: "POST",
+    cache: false,
+    data: {data_id:data_id},
+    dataType: "json",
+    success: function (data) {
+      if ( data == 'Success') {
+        $.notify('<strong>만료처리를 요청했습니다.</strong>', {
+          type: 'success'
+        });
+      	location.reload(true);
+      } else {
+        $.notify('<strong>Exception</strong>', {
+          type: 'warning'
+        });
+      }
+    }
+  });
+}
+
+function subcat_remove(data_id) {
+  $.ajax({
+    url: '/' + package_name + '/ajax/subcat_remove',
+    type: "POST",
+    cache: false,
+    data: {data_id:data_id},
+    dataType: "json",
+    success: function (data) {
+      if ( data == 'Success') {
+        $.notify('<strong>삭제를 요청했습니다.</strong>', {
+          type: 'success'
+        });
+      	location.reload(true);
+      } else {
+        $.notify('<strong>Exception</strong>', {
+          type: 'warning'
+        });
+      }
+    }
+  });
+}
+
+function request_search(page) {
+  var formData = get_formdata('#form_search')
+  formData += '&page=' + page;
+  $.ajax({
+    url: '/' + package_name + '/ajax/web_sublist',
+    type: "POST", 
+    cache: false,
+    data: formData,
+    dataType: "json",
+    success: function (data) {
+      current_data = data;
+      window.scrollTo(0,0);
+      make_list(data.list)
+      make_page_html(data.paging)
+    }
+  });
+}  
+
+
+function make_list(data) {
+  str = ''
+  for (i in data) {
+    console.log(data[i]);
+    str += m_row_start();
+    tmp = data[i].id + '<br>' + data[i].created_time;
+
+    str += m_col(2, tmp);
+    str += m_col(1, data[i].keyword);
+    
+    tmp = '시도횟수:' + data[i].search_cnt + '<br>' + data[i].last_search;
+    str += m_col(2, tmp);
+
+    if (data[i].sub_status == 0) {
+      tmp = '자막없음'
+    } else if (data[i].sub_status == 1) {
+      tmp = '타겟자막없음'
+    } else if (data[i].sub_status == 2) {
+      tmp = '자막있음(다운전)'
+    } else if (data[i].sub_status == 3) {
+      tmp = '자막다운완료'
+    } else if (data[i].sub_status == 99) {
+      tmp = '검색실패'
+    } else if (data[i].sub_status == 100) {
+      tmp = '만료'
+    } else {
+      tmp = '--'
+    }
+    str += m_col(1, tmp);
+
+    tmp = data[i].media_path + '<br>';
+    tmp += data[i].media_name + '<br>';
+
+    if (data[i].sub_status == 3) {
+      tmp += data[i].sub_name;
+    }
+    str += m_col(4, tmp);
+    tmp = m_button('subcat_research', '강제 재검색', [{'key':'data_id', 'value':data[i].id}])
+    tmp += '<br>'
+    tmp += m_button('subcat_expire', '만료처리', [{'key':'data_id', 'value':data[i].id}])
+    tmp += m_button('subcat_remove', '삭제', [{'key':'data_id', 'value':data[i].id}])
+    str += m_col(2, tmp);
+    str += m_row_end();
+    if (i != data.length -1) str += m_hr();
+  }
+  document.getElementById("list_div").innerHTML = str;
+}
+</script>
+
+{% endblock %}

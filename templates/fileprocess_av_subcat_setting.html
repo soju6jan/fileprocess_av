@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+
+<ul class="nav nav-pills bg-light shadow text-dark" >
+  <li class="nav-item"><a class="nav-link active" href="/fileprocess_av/subcat/setting">설정</a></li>
+  <li class="nav-item"><a class="nav-link" href="/fileprocess_av/subcat/list">목록</a></li>
+</ul>
+<div class="d-inline-block"></div>
+
+<div>
+  <form id='setting' name='setting'>
+    <!-- Subcat 자막 --> 
+    {{ macros.setting_checkbox('subcat_use', '자동사용', desc=['On: AV파일처리 완료 시 자막 다운로드 시도', 'Off: 스케쥴러에의해 동작안함'],  value=arg['subcat_use']) }}
+    {{ macros.setting_input_text('subcat_url', 'subtitlecat 서버주소', desc=['https://www.subtitlecat.com'], value=arg['subcat_url']) }}
+    {{ macros.setting_input_int('subcat_time_period', '자막검색주기', desc=['단위(시간), 지정된시간 주기로 재검색'], value=arg['subcat_time_period']) }}
+    {{ macros.setting_input_int('subcat_day_limit', '자막검색기간', desc=['단위(일), 최대검색 일'], value=arg['subcat_day_limit']) }}
+    {{ macros.setting_input_text('subcat_tmp_path', '자막파일 임시다운로드 경로', desc=['자막파일을 다운로드할 임시경로(로컬경로지정).'], value=arg['subcat_tmp_path']) }}
+    {{ macros.setting_input_text('subcat_langs', '다운로드 대상 자막파일 원본언어', desc=['여러개입력시 구분자는(|) ex) Korean|English|Chinese|...'], value=arg['subcat_langs']) }}
+    {{ macros.setting_input_text('subcat_subext', '자막파일 확장자', desc=['기본값: .ko.srt'], value=arg['subcat_subext']) }}
+    {{ macros.setting_checkbox('subcat_meta_flag', '메타업데이트', desc=['메타데이터 업데이트 여부, plex 정보 설정 필수'], value=arg['subcat_meta_flag']) }}
+    {{ macros.setting_input_text_and_buttons('subcat_manual_path', '경로대상 실행', [['subcat_manual_btn', '수동실행']], desc=['영상파일의 경로 입력후실행', '파일지정시 해당파일만 처리, 디렉토리지정시 하위디렉토리까지 검색'], value=arg['subcat_manual_path']) }}
+    {{ macros.setting_button_with_info([['subcat_one_execute', '1회실행'],['subcat_force_execute', '강제실행'],['subcat_reset_db', '목록전체지우기']], left='목록대상 실행', desc=['1회실행: 설정규칙(검색주기, 만료 등)에 따라 1회실행','강제실행: 설정규칙 무시하고 1회 실행(자막있는경우는제외됨)']) }}
+    {{ macros.m_hr_head_top() }}
+    {{ macros.setting_button([['global_setting_save_btn', '설정저장']]) }}
+  </form>
+</div> <!--전체-->
+
+
+<script type="text/javascript">
+var package_name = "{{arg['package_name']}}";
+
+$(document).ready(function(){
+});
+
+$("body").on('click', '#subcat_manual_btn', function(e) {
+	e.preventDefault();
+	func_subcat_manual();
+});
+
+function func_subcat_manual() {
+	fpath = document.getElementById("subcat_manual_path").value
+	$.ajax({
+		url: '/' + package_name + '/ajax/subcat_manual_execute',
+		type: "POST",
+		cache: false,
+		data: { path:fpath },
+		dataType: "json",
+		success: function (ret) {
+			m_modal(ret)
+		}
+	});
+}
+
+$("body").on('click', '#subcat_one_execute', function(e) {
+	e.preventDefault();
+	func_subcat_one_execute();
+});
+
+function func_subcat_one_execute() {
+	$.ajax({
+		url: '/' + package_name + '/ajax/subcat_one_execute',
+		type: "POST",
+		cache: false,
+		dataType: "json",
+		success: function (ret) {
+			m_modal(ret)
+		}
+	});
+}
+
+$("body").on('click', '#subcat_force_execute', function(e) {
+	e.preventDefault();
+	func_subcat_force_execute();
+});
+
+function func_subcat_force_execute() {
+	$.ajax({
+		url: '/' + package_name + '/ajax/subcat_force_execute',
+		type: "POST",
+		cache: false,
+		dataType: "json",
+		success: function (ret) {
+			m_modal(ret)
+		}
+	});
+}
+
+$("body").on('click', '#subcat_reset_db', function(e) {
+	e.preventDefault();
+	func_subcat_reset_db();
+});
+
+function func_subcat_reset_db() {
+	$.ajax({
+		url: '/' + package_name + '/ajax/subcat_reset_db',
+		type: "POST",
+		cache: false,
+		dataType: "json",
+		success: function (ret) {
+			m_modal(ret)
+		}
+	});
+}
+</script>    
+{% endblock %}
