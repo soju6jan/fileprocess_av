@@ -56,11 +56,11 @@ class Logic(object):
         'western_target_path' : '',
         'western_temp_path' : '',
 
-        'subcat_use' : 'False',
+        'subcat_use' : 'True',
         'subcat_url' : 'https://www.subtitlecat.com',
         'subcat_time_period' : '24',
         'subcat_day_limit' : '30',
-        'subcat_tmp_path' : '',
+        'subcat_tmp_path' : '/tmp',
         'subcat_langs' : 'Korean|English',
         'subcat_subext' : '.ko.srt',
         'subcat_meta_flag' : 'False',

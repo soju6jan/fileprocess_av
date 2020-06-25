@@ -187,7 +187,7 @@ class LogicNormal(object):
                         if os.path.exists(file_path):
                             shutil.move(os.path.join(path, filename), dest_filepath)
                             # 자막다운로드를 위해 SubModelItem 에 등록: by orial
-                            LogicSubcat.add_subcat_queue(os.path.join(dest_filepath, filename))
+                            SubModelItem.add_subcat_queue(dest_filepath)
                         count += 1
                         
                     except Exception as e:
@@ -310,7 +310,7 @@ class LogicNormal(object):
                         logger.debug('MOVE : %s => %s', filename, dest_filepath)
                         shutil.move(os.path.join(path, filename), dest_filepath)
                         # 자막다운로드를 위해 SubModelItem 에 등록: by orial
-                        LogicSubcat.add_subcat_queue(os.path.join(dest_filepath, filename))
+                        SubModelItem.add_subcat_queue(dest_filepath)
                         count += 1
                         
                         

@@ -238,7 +238,6 @@ class LogicSubcat(object):
             suburl = LogicSubcat.get_suburl(keyword)
             if suburl is None:
                 logger.info('failed to find subfile(key:%s)', keyword)
-                entity.search_cnt = entity.search_cnt + 1
                 entity.last_search= datetime.now()
                 entity.sub_status = 0
                 entity.save()
@@ -250,7 +249,8 @@ class LogicSubcat(object):
 
             logger.info('found sub, try to download(key:%s, url:%s)', keyword, suburl)
             downloaded = LogicSubcat.down_sub(suburl, file_path)
-            LogicSubcat.metadata_refresh(filepath=file_path)
+            if ModelSetting.get_bool('subcat_meta_flag'):
+                LogicSubcat.metadata_refresh(filepath=file_path)
 
         except Exception as e:
             logger.error('Exception:%s', e)

@@ -5,6 +5,7 @@ import traceback
 from datetime import datetime,timedelta
 import json
 import os
+import re
 
 # third-party
 from sqlalchemy import or_, and_, func, not_, desc
@@ -159,7 +160,6 @@ class ModelItem(db.Model):
         ret['created_time'] = self.created_time.strftime('%m-%d %H:%M:%S') 
         return ret
     
-    @staticmethod
     def save(self):
         try:
             db.session.add(self)
@@ -259,7 +259,7 @@ class SubModelItem(db.Model):
         self.media_path = media_path
         self.media_name = media_name
         self.search_cnt = 0
-        self.last_search= 0
+        self.last_search= datetime.now()
         self.sub_status = 0
         self.sub_url  = None
         self.sub_name  = None
@@ -326,15 +326,33 @@ class SubModelItem(db.Model):
         except:
             return False
 
+    @staticmethod
+    def parse_fname(path):
+        fpath, ext = os.path.splitext(path)
+    
+        name  = fpath[fpath.rfind('/')+1:]
+        fpath = fpath[:fpath.rfind('/')+1]
+    
+        if name.find(" [") > 0: key = name[:name.find('[')]
+        else: key = name
+    
+        # XXXX-123cdx 처리 -> XXXX-123
+        r = re.compile("cd[0-9]", re.I).search(key)
+        if r is not None: key = key[:r.start()]
+    
+        return key.strip(), fpath, name, ext
 
     @staticmethod
     def add_subcat_queue(target_filepath):
         try:
-            keyword, dname, fname, ext = LogicSubcat.parse_fname(target_filepath)
-            entity = SubModelItem(keyword, dname, fname+ext)
-            entity.save()
+            keyword, dname, fname, ext = SubModelItem.parse_fname(target_filepath)
+            item = SubModelItem(keyword, dname, fname+ext)
+            item.save()
+            logger.debug('new file added(%s)', target_filepath)
             return True
-        except:
+        except Exception, e:
+            logger.error('Exception:%s', e)
+            logger.error(traceback.format_exc())
             return False
 
     @staticmethod
@@ -371,7 +389,7 @@ class SubModelItem(db.Model):
 
             ptime = currtime + timedelta(hours=-time_period)
             #ptime = currtime + timedelta(minutes=-10) #임시코드
-            query = query.filter(SubModelItem.last_search < ptime)   # 최근검색한 목록 제외
+            query = query.filter(or_(SubModelItem.last_search < ptime, SubModelItem.search_cnt == 0))   # 최근검색한 목록 제외
             count = query.count()
             if count == 0: return []
             entities = query.all()
