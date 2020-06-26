@@ -19,7 +19,7 @@ import framework.common.fileprocess as FileProcess
 
 # 패키지
 from .plugin import logger, package_name
-from .model import ModelSetting, ModelItem
+from .model import ModelSetting, ModelItem, SubModelItem
 from .logic_subcat import LogicSubcat
 #########################################################
 
@@ -85,8 +85,8 @@ class LogicDownload(object):
                 LogicDownload.process_normal()
 
             # by orial for Subcat recent
-            if ModelSetting.get_bool('subcat_use'):
-                LogicSubcat.process_recent()
+            #if ModelSetting.get_bool('subcat_use'):
+            #    LogicSubcat.process_recent()
 
         except Exception as e: 
             logger.error('Exception:%s', e)
