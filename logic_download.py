@@ -218,7 +218,8 @@ class LogicDownload(object):
                         if os.path.exists(file_path):
                             shutil.move(os.path.join(path, filename), dest_filepath)
                             # 자막다운로드를 위해 SubModelItem 에 등록: by orial
-                            SubModelItem.add_subcat_queue(dest_filepath)
+                            #SubModelItem.add_subcat_queue(dest_filepath)
+                            SubModelItem.create(dest_filepath)
                         count += 1
                         
                     except Exception as e:
