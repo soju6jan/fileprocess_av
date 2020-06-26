@@ -1,12 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
 
-<ul class="nav nav-pills bg-light shadow text-dark" >
-  <li class="nav-item"><a class="nav-link" href="/fileprocess_av/subcat/setting">설정</a></li>
-  <li class="nav-item"><a class="nav-link active" href="/fileprocess_av/subcat/list">목록</a></li>
-</ul>
-<div class="d-inline-block"></div>
-
 <div>
   <form id="form_search" class="form-inline" style="text-align:left">
     <div class="container-fluid">
@@ -48,6 +42,7 @@
 
 <script type="text/javascript">
 var package_name = "{{arg['package_name']}}";
+var sub = "{{arg['sub']}}";
 var current_data = null;
 
 $(document).ready(function(){
@@ -88,13 +83,16 @@ $("#reset_btn").click(function(e) {
 });
 
 function subcat_research(data_id) {
+  $.notify('<strong>잠시만 기다려주세요.</strong>', {type: 'success'});
   $.ajax({
-    url: '/' + package_name + '/ajax/subcat_single',
+    url: '/' + package_name + '/ajax/' + sub + '/subcat_single',
     type: "POST",
     cache: false,
     data: {data_id:data_id},
     dataType: "json",
     success: function (data) {
+      m_modal(data);
+      return
       if ( data == 'Success') {
         $.notify('<strong>재검색을 시작합니다.</strong>', {
           type: 'success'
@@ -110,21 +108,17 @@ function subcat_research(data_id) {
 
 function subcat_expire(data_id) {
   $.ajax({
-    url: '/' + package_name + '/ajax/subcat_expire',
+    url: '/' + package_name + '/ajax/' + sub + '/subcat_expire',
     type: "POST",
     cache: false,
     data: {data_id:data_id},
     dataType: "json",
     success: function (data) {
-      if ( data == 'Success') {
-        $.notify('<strong>만료처리를 요청했습니다.</strong>', {
-          type: 'success'
-        });
-      	location.reload(true);
+      if ( data.ret ) {
+        $.notify('<strong>만료처리 하였습니다.</strong>', {type: 'success'});
+      	request_search(current_data.paging.current_page)
       } else {
-        $.notify('<strong>Exception</strong>', {
-          type: 'warning'
-        });
+        $.notify('<strong>Exception</strong>', {type: 'warning'});
       }
     }
   });
@@ -132,21 +126,17 @@ function subcat_expire(data_id) {
 
 function subcat_remove(data_id) {
   $.ajax({
-    url: '/' + package_name + '/ajax/subcat_remove',
+    url: '/' + package_name + '/ajax/' + sub + '/subcat_remove',
     type: "POST",
     cache: false,
     data: {data_id:data_id},
     dataType: "json",
     success: function (data) {
-      if ( data == 'Success') {
-        $.notify('<strong>삭제를 요청했습니다.</strong>', {
-          type: 'success'
-        });
-      	location.reload(true);
+      if (data) {
+        $.notify('<strong>삭제하였습니다.</strong>', {type: 'success'});
+      	request_search(current_data.paging.current_page)
       } else {
-        $.notify('<strong>Exception</strong>', {
-          type: 'warning'
-        });
+        $.notify('<strong>Exception</strong>', {type: 'warning'});
       }
     }
   });
@@ -156,7 +146,7 @@ function request_search(page) {
   var formData = get_formdata('#form_search')
   formData += '&page=' + page;
   $.ajax({
-    url: '/' + package_name + '/ajax/web_sublist',
+    url: '/' + package_name + '/ajax/' + sub + '/web_list',
     type: "POST", 
     cache: false,
     data: formData,
@@ -174,7 +164,7 @@ function request_search(page) {
 function make_list(data) {
   str = ''
   for (i in data) {
-    console.log(data[i]);
+    //console.log(data[i]);
     str += m_row_start();
     tmp = data[i].id + '<br>' + data[i].created_time;
 

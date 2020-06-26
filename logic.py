@@ -9,15 +9,15 @@ import threading
 # third-party
 
 # sjva 공용
-from framework import db, scheduler, path_app_root
+from framework import db, scheduler, path_app_root, path_data
 from framework.job import Job
 from framework.util import Util
 
 # 패키지
 from .plugin import logger, package_name
 from .model import ModelSetting, ModelItem, SubModelItem
-from .logic_normal import LogicNormal, ModelItem
-from .logic_subcat import LogicSubcat, SubModelItem
+from .logic_download import LogicDownload
+from .logic_subcat import LogicSubcat
 #########################################################
 
 
@@ -56,22 +56,24 @@ class Logic(object):
         'western_target_path' : '',
         'western_temp_path' : '',
 
-        'subcat_use' : 'True',
-        'subcat_url' : 'https://www.subtitlecat.com',
-        'subcat_time_period' : '24',
-        'subcat_day_limit' : '30',
-        'subcat_tmp_path' : '/tmp',
-        'subcat_langs' : 'Korean|English',
-        'subcat_subext' : '.ko.srt',
-        'subcat_meta_flag' : 'False',
-        'subcat_manual_path' : '',
-        
         'normal_use' : 'False',
         'normal_download_path' : '',
         'normal_target_path' : '',
         'normal_temp_path' : '',
         'normal_min_size' : '100',
-        
+
+        'subcat_use' : 'False',
+        'subcat_interval' : '120',
+        'subcat_url' : 'https://www.subtitlecat.com',
+        'subcat_time_period' : '24',
+        'subcat_day_limit' : '30',
+        'subcat_tmp_path' : os.path.join(path_data, 'tmp'),
+        'subcat_langs' : 'Korean',
+        'subcat_subext' : '.ko.srt',
+        'subcat_meta_flag' : 'False',
+        'subcat_manual_path' : '',
+        'subcat_include_manual_path_in_scheduler' : 'True',
+        'subcat_plex_path_rule' : '',
     }
 
     @staticmethod
@@ -81,7 +83,6 @@ class Logic(object):
                 if db.session.query(ModelSetting).filter_by(key=key).count() == 0:
                     db.session.add(ModelSetting(key, value))
             db.session.commit()
-            
             Logic.migration()
         except Exception as e: 
             logger.error('Exception:%s', e)
@@ -92,8 +93,13 @@ class Logic(object):
         try:
             logger.debug('%s plugin_load', package_name)
             Logic.db_init()
-            if ModelSetting.query.filter_by(key='auto_start').first().value == 'True':
-                Logic.scheduler_start()
+            
+            # 기능별로
+            if ModelSetting.get_bool('auto_start'):
+                Logic.scheduler_start('download')
+            if ModelSetting.get_bool('subcat_use'):
+                Logic.scheduler_start('subcat')
+
             # 편의를 위해 json 파일 생성
             from plugin import plugin_info
             Util.save_from_dict_to_json(plugin_info, os.path.join(os.path.dirname(__file__), 'info.json'))
@@ -111,55 +117,63 @@ class Logic(object):
 
 
     @staticmethod
-    def scheduler_start():
+    def scheduler_start(sub):
         try:
-            interval = ModelSetting.query.filter_by(key='interval').first().value
-            job = Job(package_name, package_name, interval, Logic.scheduler_function, u"AV 파일처리", False)
+            job_id = '%s_%s' % (package_name, sub)
+            if sub == 'download':
+                job = Job(package_name, job_id, ModelSetting.get('interval'), Logic.scheduler_function, u"AV 파일처리", False, args=sub)
+            elif sub == 'subcat':
+                job = Job(package_name, job_id, ModelSetting.get('subcat_interval'), Logic.scheduler_function, u"AV 자막다운로드", False, args=sub)
             scheduler.add_job_instance(job)
         except Exception as e: 
             logger.error('Exception:%s', e)
             logger.error(traceback.format_exc())
 
-    
+
     @staticmethod
-    def scheduler_stop():
+    def scheduler_stop(sub):
         try:
-            scheduler.remove_job(package_name)
+            job_id = '%s_%s' % (package_name, sub)
+            scheduler.remove_job(job_id)
         except Exception as e: 
             logger.error('Exception:%s', e)
             logger.error(traceback.format_exc())
 
 
     @staticmethod
-    def scheduler_function():
-        LogicNormal.scheduler_function()
+    def scheduler_function(sub):
+        if sub == 'download':
+            LogicDownload.scheduler_function()
+        elif sub == 'subcat':
+            logger.debug('1111111111111111111')
+            LogicSubcat.scheduler_function()
 
 
     @staticmethod
-    def reset_db():
-        try:
-            db.session.query(ModelItem).delete()
-            db.session.commit()
-            return True
-        except Exception as e: 
-            logger.error('Exception:%s', e)
-            logger.error(traceback.format_exc())
-            return False
+    def reset_db(sub):
+        logger.debug('reset db:%s', sub)
+        if sub == 'download':
+            return LogicDownload.reset_db()
+        elif sub == 'subcat':
+            return LogicSubcat.reset_db()
+        return False
 
 
     @staticmethod
-    def one_execute():
+    def one_execute(sub):
+        logger.debug('one_execute :%s', sub)
         try:
-            if scheduler.is_include(package_name):
-                if scheduler.is_running(package_name):
+            job_id = '%s_%s' % (package_name, sub)
+            if scheduler.is_include(job_id):
+                if scheduler.is_running(job_id):
                     ret = 'is_running'
                 else:
-                    scheduler.execute_job(package_name)
+                    scheduler.execute_job(job_id)
                     ret = 'scheduler'
             else:
                 def func():
                     time.sleep(2)
-                    Logic.scheduler_function()
+                    Logic.scheduler_function(sub)
                 threading.Thread(target=func, args=()).start()
                 ret = 'thread'
         except Exception as e: 
@@ -167,100 +181,7 @@ class Logic(object):
             logger.error(traceback.format_exc())
             ret = 'fail'
         return ret
-
-
-    @staticmethod
-    def subcat_manual_execute(path):
-        try:
-            th = threading.Thread(target=LogicSubcat.handler_function, args=('manual_execute', path,))
-            th.start()
-            ret = 'thread'
-        except Exception as e: 
-            logger.error('Exception:%s', e)
-            logger.error(traceback.format_exc())
-            ret = 'fail'
-        return ret
-
-
-    @staticmethod
-    def subcat_one_execute():
-        try:
-            th = threading.Thread(target=LogicSubcat.handler_function, args=('one_execute', '',))
-            th.start()
-            ret = 'thread'
-        except Exception as e: 
-            logger.error('Exception:%s', e)
-            logger.error(traceback.format_exc())
-            ret = 'fail'
-        return ret
-
-
-    @staticmethod
-    def subcat_force_execute():
-        try:
-            th = threading.Thread(target=LogicSubcat.handler_function, args=('force_execute', '',))
-            th.start()
-            ret = 'thread'
-        except Exception as e: 
-            logger.error('Exception:%s', e)
-            logger.error(traceback.format_exc())
-            ret = 'fail'
-        return ret
-
-
-    @staticmethod
-    def proc_single(data_id):
-        try:
-            logger.debug('%s STARTED', __name__)
-            th = threading.Thread(target=LogicSubcat.handler_function, args=('proc_single',data_id,))
-            th.start()
-            ret = 'Success'
-        except Exception as e: 
-            logger.error('Exception:%s', e)
-            logger.error(traceback.format_exc())
-            ret = 'fail'
-        return ret
-
-
-    @staticmethod
-    def proc_expire(data_id):
-        try:
-            logger.debug('%s STARTED', __name__)
-            th = threading.Thread(target=LogicSubcat.handler_function, args=('proc_expire',data_id,))
-            th.start()
-            ret = 'Success'
-        except Exception as e: 
-            logger.error('Exception:%s', e)
-            logger.error(traceback.format_exc())
-            ret = 'fail'
-        return ret
-
-
-    @staticmethod
-    def proc_remove(data_id):
-        try:
-            logger.debug('%s STARTED', __name__)
-            th = threading.Thread(target=LogicSubcat.handler_function, args=('proc_remove',data_id,))
-            th.start()
-            ret = 'Success'
-        except Exception as e: 
-            logger.error('Exception:%s', e)
-            logger.error(traceback.format_exc())
-            ret = 'fail'
-        return ret
-
-    @staticmethod
-    def subcat_reset_db():
-        try:
-            db.session.query(SubModelItem).delete()
-            db.session.commit()
-            return True
-        except Exception as e: 
-            logger.error('Exception:%s', e)
-            logger.error(traceback.format_exc())
-            return False
-
-
+    """        
     @staticmethod
     def process_telegram_data(data):
         try:
@@ -268,6 +189,7 @@ class Logic(object):
         except Exception as e: 
             logger.error('Exception:%s', e)
             logger.error(traceback.format_exc())
+    """
 
     @staticmethod
     def migration():
@@ -277,3 +199,9 @@ class Logic(object):
             logger.error('Exception:%s', e)
             logger.error(traceback.format_exc())
 
+
+    ##################################################################################
+
+    
+
+    

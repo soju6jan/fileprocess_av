@@ -9,6 +9,7 @@ import shutil
 import re
 
 # third-party
+from flask import jsonify
 
 # sjva 공용
 from framework import app, db, scheduler, path_app_root, celery
@@ -18,21 +19,43 @@ import framework.common.fileprocess as FileProcess
 
 # 패키지
 from .plugin import logger, package_name
-from .model import ModelSetting, ModelItem, SubModelItem
+from .model import ModelSetting, ModelItem
 from .logic_subcat import LogicSubcat
 #########################################################
 
 
-class LogicNormal(object):
+class LogicDownload(object):
+    @staticmethod
+    def process_ajax(sub, req):
+        try:
+            if sub == 'web_list':
+                ret = ModelItem.web_list(req)
+                return jsonify(ret)
+        except Exception as e: 
+            logger.error('Exception:%s', e)
+            logger.error(traceback.format_exc())
+
     @staticmethod
     def scheduler_function():
-        #LogicNormal.task()
+        #LogicDownload.task()
         #return
         if app.config['config']['use_celery']:
-            result = LogicNormal.task.apply_async()
+            result = LogicDownload.task.apply_async()
             result.get()
         else:
-            LogicNormal.task()
+            LogicDownload.task()
+
+    @staticmethod
+    def reset_db():
+        try:
+            db.session.query(ModelItem).delete()
+            db.session.commit()
+            return True
+        except Exception as e: 
+            logger.error('Exception:%s', e)
+            logger.error(traceback.format_exc())
+            return False
+    #################################################################
 
     @staticmethod
     @celery.task
@@ -41,8 +64,8 @@ class LogicNormal(object):
             #2020-06-24
             # celery 에서는 proxy 항상 None
             try:
-                from av_agent.logic_normal import LogicNormal as AgentLogicNormal
-                AgentLogicNormal.proxy_init()
+                from av_agent.logic_normal import LogicDownload as AgentLogicDownload
+                AgentLogicDownload.proxy_init()
             except:
                 pass
 
@@ -50,16 +73,16 @@ class LogicNormal(object):
             
             job_list = []
             if ModelSetting.get_bool('censored_use'):
-                LogicNormal.process_censored()
+                LogicDownload.process_censored()
             
             if ModelSetting.get_bool('uncensored_use'):
-                LogicNormal.process_uncensored()
+                LogicDownload.process_uncensored()
 
             if ModelSetting.get_bool('western_use'):
-                LogicNormal.process_western()
+                LogicDownload.process_western()
 
             if ModelSetting.get_bool('normal_use'):
-                LogicNormal.process_normal()
+                LogicDownload.process_normal()
 
             # by orial for Subcat recent
             if ModelSetting.get_bool('subcat_use'):
@@ -89,8 +112,8 @@ class LogicNormal(object):
     @staticmethod
     def process_censored():
         try:
-            source = LogicNormal.get_path_list('censored_download_path')
-            target = LogicNormal.get_path_list('censored_target_path')
+            source = LogicDownload.get_path_list('censored_download_path')
+            target = LogicDownload.get_path_list('censored_target_path')
             
 
             no_censored_path = ModelSetting.get('censored_temp_path')
@@ -215,8 +238,8 @@ class LogicNormal(object):
     @staticmethod
     def process_uncensored():
         try:
-            source = LogicNormal.get_path_list('uncensored_download_path')
-            target = LogicNormal.get_path_list('uncensored_target_path')
+            source = LogicDownload.get_path_list('uncensored_download_path')
+            target = LogicDownload.get_path_list('uncensored_target_path')
 
             
             # 폴더목록 넣기
@@ -340,8 +363,8 @@ class LogicNormal(object):
     @staticmethod
     def process_western():
         try:
-            source = LogicNormal.get_path_list('western_download_path')
-            target = LogicNormal.get_path_list('western_target_path')
+            source = LogicDownload.get_path_list('western_download_path')
+            target = LogicDownload.get_path_list('western_target_path')
             logger.debug('source1 : %s', ModelSetting.get('western_download_path'))
             logger.debug('source2 : %s', source)
             target_child_list = []
@@ -428,8 +451,8 @@ class LogicNormal(object):
     @staticmethod
     def process_normal():
         try:
-            source = LogicNormal.get_path_list('normal_download_path')
-            target = LogicNormal.get_path_list('normal_target_path')
+            source = LogicDownload.get_path_list('normal_download_path')
+            target = LogicDownload.get_path_list('normal_target_path')
 
 
             target_child_list = []
@@ -493,17 +516,11 @@ class LogicNormal(object):
             logger.debug(traceback.format_exc())
 
 
-    
-
-    
-    
-
-    
 
     @staticmethod
     def is_uncensored(filename):
         try:
-            tmp = LogicNormal.get_plex_filename_uncensored(filename)
+            tmp = LogicDownload.get_plex_filename_uncensored(filename)
             if tmp is not None:
                 return True
             

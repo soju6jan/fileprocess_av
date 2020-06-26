@@ -81,8 +81,9 @@ class ModelSetting(db.Model):
     @staticmethod
     def to_dict():
         try:
-            from framework.util import Util
-            return Util.db_list_to_dict(db.session.query(ModelSetting).all())
+            ret = Util.db_list_to_dict(db.session.query(ModelSetting).all())
+            ret['package_name'] = package_name
+            return ret 
         except Exception as e:
             logger.error('Exception:%s %s', e, key)
             logger.error(traceback.format_exc())
@@ -93,6 +94,8 @@ class ModelSetting(db.Model):
         try:
             for key, value in req.form.items():
                 if key in ['scheduler', 'is_running']:
+                    continue
+                if key.startswith('global_'):
                     continue
                 logger.debug('Key:%s Value:%s', key, value)
                 entity = db.session.query(ModelSetting).filter_by(key=key).with_for_update().first()
@@ -253,11 +256,13 @@ class SubModelItem(db.Model):
     plex_section_id = db.Column(db.String)
     plex_metakey    = db.Column(db.String)
 
-    def __init__(self, keyword, media_path, media_name):
+    #def __init__(self, keyword, media_path, media_name):
+    def __init__(self, fullpath):
+        self.keyword, dirname, name, ext = SubModelItem.parse_fname(fullpath)
         self.created_time = datetime.now()
-        self.keyword    = keyword
-        self.media_path = media_path
-        self.media_name = media_name
+        #self.media_path = media_path
+        self.media_path = fullpath
+        self.media_name = name + ext
         self.search_cnt = 0
         self.last_search= datetime.now()
         self.sub_status = 0
@@ -274,6 +279,7 @@ class SubModelItem(db.Model):
         ret = {x.name: getattr(self, x.name) for x in self.__table__.columns}
         ret['created_time'] = self.created_time.strftime('%m-%d %H:%M:%S') 
         ret['last_search'] = self.last_search.strftime('%m-%d %H:%M:%S') 
+        ret['media_path'] = os.path.dirname(self.media_path)
         return ret
     
     def remove(self):
@@ -309,38 +315,46 @@ class SubModelItem(db.Model):
             return '--'
 
     @staticmethod
+    def create(fullpath):
+        try:
+            entity = SubModelItem.get_entity_by_fullpath(fullpath)
+            if entity is None:
+                entity = SubModelItem(fullpath)
+                entity.save()
+                return entity
+            return None
+        except Exception, e:
+            logger.error('Exception:%s', e)
+            logger.error(traceback.format_exc())
+
+
+    @staticmethod
     def print_entity(entity):
         try:
             logger.debug('------------------------------------------------')
-            logger.debug('id              : %d', entity.id)
+            logger.debug('id              : %s', entity.id)
             logger.debug('created_time    : %s', entity.created_time)
             logger.debug('keyword         : %s', entity.keyword)
             logger.debug('media_path      : %s', entity.media_path)   
             logger.debug('media_name      : %s', entity.media_name)   
-            logger.debug('search_cnt      : %d', entity.search_cnt)
+            logger.debug('search_cnt      : %s', entity.search_cnt)
             logger.debug('last_search     : %s', entity.last_search)
-            logger.debug('sub_status      : %s(%d)', entity.sub_status_to_str(), entity.sub_status)
+            logger.debug('sub_status      : %s(%s)', entity.sub_status_to_str(), entity.sub_status)
             logger.debug('plex_section_id : %s', entity.plex_section_id if entity.plex_section_id is not None else 'None')
             logger.debug('plex_metakey    : %s', entity.plex_metakey if entity.plex_metakey is not None else 'None')
             logger.debug('------------------------------------------------')
         except:
             return False
 
+    # keyword, 디렉토리, 파일명(확장자제외), 확장자
     @staticmethod
     def parse_fname(path):
-        fpath, ext = os.path.splitext(path)
-    
-        name  = fpath[fpath.rfind('/')+1:]
-        fpath = fpath[:fpath.rfind('/')+1]
-    
-        if name.find(" [") > 0: key = name[:name.find('[')]
-        else: key = name
-    
-        # XXXX-123cdx 처리 -> XXXX-123
-        r = re.compile("cd[0-9]", re.I).search(key)
-        if r is not None: key = key[:r.start()]
-    
-        return key.strip(), fpath, name, ext
+        name, ext = os.path.splitext(os.path.basename(path))
+        dirname = os.path.dirname(path)
+        key = name.split('[')[0].strip()
+        if key[-3:-1] == 'cd':
+            key = key[:-3]
+        return key, dirname, name, ext
 
     @staticmethod
     def add_subcat_queue(target_filepath):
@@ -355,6 +369,8 @@ class SubModelItem(db.Model):
             logger.error(traceback.format_exc())
             return False
 
+    # 동일 키워드 이름이 다른 파일들이 많은경우 보장안됨.
+    """
     @staticmethod
     def get_entity(keyword):
         try:
@@ -363,11 +379,21 @@ class SubModelItem(db.Model):
                 return entity
         except:
             return None
+    """
 
     @staticmethod
     def get_entity_by_id(data_id):
         try:
             entity = db.session.query(SubModelItem).filter_by(id=data_id).with_for_update().first()
+            if entity is not None:
+                return entity
+        except:
+            return None
+
+    @staticmethod
+    def get_entity_by_fullpath(path):
+        try:
+            entity = db.session.query(SubModelItem).filter_by(media_path=path).with_for_update().first()
             if entity is not None:
                 return entity
         except:
@@ -423,7 +449,7 @@ class SubModelItem(db.Model):
             return None
 
     @staticmethod
-    def web_sublist(req):
+    def web_list(req):
         try:
             ret = {}
             page = 1
@@ -434,7 +460,7 @@ class SubModelItem(db.Model):
                 page = int(req.form['page'])
             if 'search_word' in req.form:
                 search = req.form['search_word']
-            option = req.form['option']
+            option = req.form['option'] if 'option' in req.form else 'all'
             order = req.form['order'] if 'order' in req.form else 'desc'
 
             query = SubModelItem.make_query(search=search, option=option, order=order)
