@@ -259,6 +259,9 @@ class SubModelItem(db.Model):
     #def __init__(self, keyword, media_path, media_name):
     def __init__(self, fullpath):
         self.keyword, dirname, name, ext = SubModelItem.parse_fname(fullpath)
+        if ext.lower() in ['.smi', '.srt', '.ass']:
+            raise Exception('is sub')
+
         self.created_time = datetime.now()
         #self.media_path = media_path
         self.media_path = fullpath
