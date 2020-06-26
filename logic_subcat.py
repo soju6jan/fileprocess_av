@@ -392,6 +392,7 @@ class LogicSubcat(object):
     # jpg, nfo 등이 있을 수 있음
     @staticmethod
     def load_flist(path, flist, slist):
+        logger.debug('load_flist : %s', path)
         try:
             if os.path.isdir(path):
                 for f in os.listdir(path):
