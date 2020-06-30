@@ -249,7 +249,7 @@ class SubModelItem(db.Model):
     last_search= db.Column(db.DateTime) # 최근검색시간
     search_cnt = db.Column(db.Integer)  # 시도횟수
 
-    sub_status = db.Column(db.Integer)  # 0.자막없음, 1:타겟자막없음, 2:자막있음, 3:자막다운완료, 99:검색실패, 100:기간만료
+    sub_status = db.Column(db.Integer)  # 0.자막없음, 1:타겟자막없음, 2:자막있음, 3:자막다운완료, 33: 강제이동완료, 99:검색실패, 100:기간만료
     sub_name   = db.Column(db.String)
     sub_url    = db.Column(db.String)   # 자막파일url
 
@@ -414,6 +414,7 @@ class SubModelItem(db.Model):
             query = db.session.query(SubModelItem)
 
             query = query.filter(SubModelItem.sub_status!=3)     # 자막다운받은경우제외
+            query = query.filter(SubModelItem.sub_status!=33)    # 자막강제이동된경우제외
             query = query.filter(SubModelItem.sub_status!=100)   # 만료된경우제외
 
             ptime = currtime + timedelta(hours=-time_period)
@@ -442,6 +443,7 @@ class SubModelItem(db.Model):
         try:
             query = db.session.query(SubModelItem)
             query = query.filter(SubModelItem.sub_status!=3)     # 자막다운받은경우제외
+            query = query.filter(SubModelItem.sub_status!=33)    # 자막강제이동된경우제외
             count = query.count()
             entities = query.all()
             return entities
@@ -455,9 +457,9 @@ class SubModelItem(db.Model):
     def get_all_entities_with_sub():
         try:
             query = db.session.query(SubModelItem)
-            query = query.filter(SubModelItem.sub_status==3)     # 자막이 있는 경우만 
+            query = query.filter(SubModelItem.sub_status==3)     # 자막이 있고 이동되지 않은 경우만
 
-            # 자막강제이동의 경우
+            # TODO: 자막강제이동의 경우::: 일단 남겨둠-- 추후 제거 필요
             if ModelSetting.get_bool('subcat_force_move_flag'):
                 force_move_path = ModelSetting.get('subcat_force_move_path')
                 if os.path.isdir(force_move_path) is not True:
