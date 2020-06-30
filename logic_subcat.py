@@ -105,9 +105,9 @@ class LogicSubcat(object):
             logger.debug('%s SUBCAT HANDLER TASK(%s)', __name__, func_type)
             if func_type == 'scheduler':
                 LogicSubcat.dblist_execute('db_one')
-                if ModelSetting.get_bool('subcat_include_manual_path_in_scheduler'):
-                    LogicSubcat.manual_execute(param)    
-            elif func_type in ['db_one', 'db_force']:
+                #if ModelSetting.get_bool('subcat_include_manual_path_in_scheduler'):
+                    #LogicSubcat.manual_execute(param) 
+            elif func_type in ['db_one', 'db_force', 'db_force_move']:
                 LogicSubcat.dblist_execute(func_type)
             elif func_type == 'path':
                 LogicSubcat.manual_execute(ModelSetting.get('subcat_manual_path'))
@@ -130,10 +130,15 @@ class LogicSubcat(object):
                 entities = SubModelItem.get_recent_entities()
             elif func_type == 'db_force':
                 entities = SubModelItem.get_all_entities()
+            elif func_type == 'db_force_move':
+                entities = SubModelItem.get_all_entities_with_sub()
             logger.debug('get %s entities(count:%d)', func_type, len(entities))
             for entity in entities:
                 SubModelItem.print_entity(entity)
-                ret = LogicSubcat.process_single_by_id(entity.id)
+                if func_type == 'db_force_move':
+                    ret = LogicSubcat.process_force_move_by_id(entity.id)
+                else:
+                    ret = LogicSubcat.process_single_by_id(entity.id)
 
             logger.debug('%s %s END', __name__, sys._getframe().f_code.co_name)
             return True
@@ -177,10 +182,6 @@ class LogicSubcat(object):
                 entity.last_search= datetime.now()
                 entity.sub_status = 0
                 entity.save()
-
-                # 자막이 없는데..
-                #if ModelSetting.get_bool('subcat_meta_flag'):
-                #    LogicSubcat.metadata_refresh(filepath=file_path)
                 logger.debug('suburl is none')
                 return True
             else:
@@ -192,6 +193,58 @@ class LogicSubcat(object):
 
             if ModelSetting.get_bool('subcat_meta_flag'):
                 LogicSubcat.metadata_refresh(file_path, sub_filepath)
+
+        except Exception as e:
+            logger.error('Exception:%s', e)
+            logger.error(traceback.format_exc())
+        
+        return True
+
+    # 자막파일이 있는 경우 자막/영상 파일 강제이동(목록기반 수동실행)
+    @staticmethod
+    def process_force_move_by_id(data_id):
+        logger.debug('%s %s START', __name__, sys._getframe().f_code.co_name)
+        try:
+            entity = SubModelItem.get_entity_by_id(data_id)
+            if entity is None:
+                logger.error('failed to find SubModelItem(id:%d)', id)
+                return False
+            force_move_flag = ModelSetting.get_bool('subcat_force_move_flag')
+            force_move_path = ModelSetting.get('subcat_force_move_path')
+
+            if os.path.isdir(force_move_path) is False:
+                logger.warning('invalid target path(%s)', force_move_path)
+                return False
+
+            logger.info('FORCE Media/sub file move to: %s', force_move_path)
+
+            old_media_path = entity.media_path
+            old_sub_path   = os.path.join(os.path.dirname(old_media_path), entity.sub_name)
+            new_media_path = os.path.join(force_move_path, entity.media_name)
+            new_sub_path   = os.path.join(force_move_path, entity.sub_name)
+            logger.debug('process_force_move_by_id started(path:%s)', old_media_path)
+
+            if os.path.isfile(old_media_path) is False or os.path.isfile(old_sub_path) is False:
+                logger.warning('file does not exist(media:%s,sub:%s)', old_media_path, old_sub_path)
+                return False
+
+            # 자막/영상 강제이동 처리
+            logger.info('move media file: from(%s) -> to(%s)', old_media_path, new_media_path)
+            shutil.move(old_media_path, new_media_path) 
+            entity.media_path = new_media_path
+            logger.info('move sub   file: from(%s) -> to(%s)', old_sub_path, new_sub_path)
+            shutil.move(old_sub_path, new_sub_path)
+            entity.save()
+
+            if ModelSetting.get_bool('subcat_meta_flag'):
+                # delete old media from plex
+                # 있는걸 지우는 거라, 별도 Thread로 처리할 필요가 없을 듯
+                if LogicSubcat.metadata_delete(old_media_path) is False:
+                    logger.warning('failed to delete old media from plex(path:%s)', old_media_path)
+                    # do nothing
+
+                # refresh가 스캔도 해주나? 
+                LogicSubcat.metadata_refresh(new_media_path, new_sub_path)
 
         except Exception as e:
             logger.error('Exception:%s', e)
@@ -233,7 +286,7 @@ class LogicSubcat(object):
                 logger.error('failed to download subfile(key:%s, url:%s)', keyword, url)
                 entity.sub_status = 99
                 entity.save()
-                return False
+                return False, None
             name = os.path.splitext(entity.media_name)[0]
             fname = name + ModelSetting.get('subcat_subext')
             tmp_f = os.path.join(ModelSetting.get('subcat_tmp_path'), fname)
@@ -245,7 +298,26 @@ class LogicSubcat(object):
             size = f.write(r.text.encode('utf-8'))
             f.close()
 
-            logger.info('move     sub to: %s' % dst_f)
+            # 자막/영상 강제이동 처리
+            force_move_flag = ModelSetting.get_bool('subcat_force_move_flag')
+            force_move_path = ModelSetting.get('subcat_force_move_path')
+
+            if force_move_flag and os.path.isdir(force_move_path):
+                logger.info('FORCE Media/sub file move to: %s', force_move_path)
+                
+                new_media_path = os.path.join(force_move_path, entity.media_name)
+                logger.info('move media file: from(%s) -> to (%s)', entity.media_path, new_media_path)
+                shutil.move(entity.media_path, new_media_path) 
+
+                if ModelSetting.get_bool('subcat_meta_flag'):
+                    if LogicSubcat.metadata_delete(entity.media_path) is False:
+                        logger.warning('failed to delete old media from plex(path:%s)', entity.media_path)
+
+                # update new path
+                entity.media_path = new_media_path
+                dst_f = os.path.join(force_move_path, fname)
+
+            logger.info('move subfile to: %s' % dst_f)
             shutil.move(tmp_f, dst_f)
             #LogicSubcat.metadata_refresh(filepath=path)
 
@@ -373,14 +445,6 @@ class LogicSubcat(object):
 
     @staticmethod
     def exist_sub(path, slist):
-        """
-        for sub in slist:
-            spath, ext = os.path.splitext(sub)
-            regex = re.compile(spath, re.I)
-            if regex.search(path) is not None:
-                return True
-        return False
-        """
         tmp = os.path.splitext(path)
         for sub in slist:
             spath, ext = os.path.splitext(sub)
@@ -469,6 +533,34 @@ class LogicSubcat(object):
             t = threading.Thread(target=func, args=(filepath,sub_filepath))
             t.setDaemon(True)
             t.start()
+        except Exception as e: 
+            logger.error('Exception:%s', e)
+            logger.error(traceback.format_exc())
+        return False
+
+    @staticmethod
+    def metadata_delete(old_media_path):
+        try:
+            logger.debug('try to delete metadata for:%s', old_media_path)
+            filepath = LogicSubcat.get_plex_path(old_media_path)
+            import threading, time, plex
+            from plex.model import ModelSetting as PlexModelSetting
+            # get metaid
+            metaid = plex.LogicNormal.get_library_key_using_bundle(filepath)
+            if metaid is None:
+                logger.error('failed to get metadata_id(path:%s)', filepath)
+                return False
+
+            # request to delete old media from plex
+            murl = '/library/metadata/{metaid}/?includeExternalMedia=1&X-Plex-Token={token}'
+            url = PlexModelSetting.get('server_url') + murl.format(metaid=metaid, token=PlexModelSetting.get('server_token'))
+            logger.debug('delete url:%s', url)
+            r = requests.delete(url)
+            if r.status_code != 200:
+                logger.error('failed to delete media from plex(meta_id:%s, path:%s)', metaid, filepath)
+                return False
+            logger.info('media deleted(meta_id:%s, path:%s)', metaid, filepath)
+            return True
         except Exception as e: 
             logger.error('Exception:%s', e)
             logger.error(traceback.format_exc())

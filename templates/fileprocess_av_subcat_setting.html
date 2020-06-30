@@ -15,10 +15,12 @@
 	
 	{{ macros.m_hr() }}
 	{{ macros.setting_input_text_and_buttons('subcat_manual_path', '경로대상 실행', [['subcat_manual_btn', '수동실행']], desc=['영상파일의 경로 입력후실행', '파일지정시 해당파일만 처리, 디렉토리지정시 하위디렉토리까지 검색'], value=arg['subcat_manual_path']) }}
-	{{ macros.setting_checkbox('subcat_include_manual_path_in_scheduler', '스케쥴링에 작업 포함', value=arg['subcat_include_manual_path_in_scheduler'], desc='On : 스케쥴링 작업에 경로대상 실행 작업을 포함합니다.') }}
+	<!--{{ macros.setting_checkbox('subcat_include_manual_path_in_scheduler', '스케쥴링에 작업 포함', value=arg['subcat_include_manual_path_in_scheduler'], desc='On : 스케쥴링 작업에 경로대상 실행 작업을 포함합니다.') }}-->
+	{{ macros.setting_checkbox('subcat_force_move_flag', '자막/영상강제이동', value=arg['subcat_force_move_flag'], desc='On: 자막/영상강제이동, Off: 자막을 영상이 있는 폴더로 이동') }}
+        {{ macros.setting_input_text('subcat_force_move_path', '자막/영상강제이동경로', desc=['자막파일이 있는경우 영상/자막파일을 강제로 이동할 경로'], value=arg['subcat_force_move_path']) }}
 
 	{{ macros.m_hr() }}
-	{{ macros.setting_button_with_info([['subcat_one_execute_btn', '1회실행'],['subcat_force_execute', '강제실행'],['global_reset_db_sub_btn', '목록전체지우기']], left='목록대상 실행', desc=['1회실행: 설정규칙(검색주기, 만료 등)에 따라 1회실행','강제실행: 설정규칙 무시하고 1회 실행(자막있는경우는제외됨)']) }}
+	{{ macros.setting_button_with_info([['subcat_one_execute_btn', '1회실행'],['subcat_force_execute', '강제실행'],['subcat_force_move_btn', '자막/영상강제이동'],['global_reset_db_sub_btn', '목록전체지우기']], left='목록대상 실행', desc=['1회실행: 설정규칙(검색주기, 만료 등)에 따라 1회실행','강제실행: 설정규칙 무시하고 1회 실행(자막있는경우는제외됨)','자막/영상강제이동: 자막있는경우 영상/자막파일을 강제로이동함(목록에있는데이터에 대해서만실행']) }}
 	{{ macros.setting_input_int('subcat_time_period', '자막검색주기', desc=['단위(시간), 지정된시간 주기로 재검색', '설정 시간 이내에 검색한 기록이 있으면 다시 수행하지 않습니다.'], value=arg['subcat_time_period']) }}
     {{ macros.setting_input_int('subcat_day_limit', '자막검색기간', desc=['단위(일), 최대검색 일', '자막이 안 올라올 가능성이 높아 이 기간이 넘으면 다시 검색하지 않습니다. '], value=arg['subcat_day_limit']) }}
     
@@ -65,6 +67,11 @@ $("body").on('click', '#subcat_force_execute', function(e) {
 $("body").on('click', '#subcat_one_execute_btn', function(e) {
 	e.preventDefault();
 	func_subcat_manual('db_one');
+});
+
+$("body").on('click', '#subcat_force_move_btn', function(e) {
+	e.preventDefault();
+	func_subcat_manual('db_force_move');
 });
 
 
