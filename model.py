@@ -452,6 +452,29 @@ class SubModelItem(db.Model):
             return None
 
     @staticmethod
+    def get_all_entities_with_sub():
+        try:
+            query = db.session.query(SubModelItem)
+            query = query.filter(SubModelItem.sub_status==3)     # 자막이 있는 경우만 
+
+            # 자막강제이동의 경우
+            if ModelSetting.get_bool('subcat_force_move_flag'):
+                force_move_path = ModelSetting.get('subcat_force_move_path')
+                if os.path.isdir(force_move_path) is not True:
+                    logger.warning('invalid force_move_path(%s)', force_move_path)
+                    return []
+                query = query.filter(~SubModelItem.media_path.like(force_move_path+'%')) # 강제이동미실행된경우만
+
+            count = query.count()
+            entities = query.all()
+            return entities
+
+        except Exception, e:
+            logger.error('Exception:%s', e)
+            logger.error(traceback.format_exc())
+            return None
+
+    @staticmethod
     def web_list(req):
         try:
             ret = {}
