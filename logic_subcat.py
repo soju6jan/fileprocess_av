@@ -165,7 +165,7 @@ class LogicSubcat(object):
             # for test
             #libkey = LogicSubcat.get_library_key_using_bundle(file_path, -1)
             if os.path.isfile(file_path) is False:
-                logger.warning('target file does not exist(path:%s)', path)
+                logger.warning('target file does not exist(path:%s)', file_path)
                 return False
 
             #keyword, dname, fname, ext = LogicSubcat.parse_fname(file_path)
@@ -220,22 +220,37 @@ class LogicSubcat(object):
 
             old_media_path = entity.media_path
             old_sub_path   = os.path.join(os.path.dirname(old_media_path), entity.sub_name)
-            new_media_path = os.path.join(force_move_path, entity.media_name)
-            new_sub_path   = os.path.join(force_move_path, entity.sub_name)
+            #new_media_path = os.path.join(force_move_path, entity.media_name)
+            #new_sub_path   = os.path.join(force_move_path, entity.sub_name)
+            # 파일이동시 원본파일 depth 유지
+            new_media_path = LogicSubcat.get_new_media_path(old_media_path)
+            new_sub_path = os.path.join(os.path.dirname(new_media_path), entity.sub_name)
+
+            # 품번폴더 생성 여부에 따른 처리
+            if ModelSetting.get('subcat_create_keyword_folder'):
+                new_media_path = os.path.join(os.path.dirname(new_media_path), entity.keyword.upper(), entity.media_name)
+                new_sub_path = os.path.join(os.path.dirname(new_media_path), entity.sub_name)
+
             logger.debug('process_force_move_by_id started(path:%s)', old_media_path)
 
             if os.path.isfile(old_media_path) is False or os.path.isfile(old_sub_path) is False:
                 logger.warning('file does not exist(media:%s,sub:%s)', old_media_path, old_sub_path)
                 return False
 
+            if os.path.exists(os.path.dirname(new_media_path)) is False:
+                os.makedirs(os.path.dirname(new_media_path))
+
             # 자막/영상 강제이동 처리
             logger.info('move media file: from(%s) -> to(%s)', old_media_path, new_media_path)
             shutil.move(old_media_path, new_media_path) 
             entity.media_path = new_media_path
+            entity.sub_status = 33
             logger.info('move sub   file: from(%s) -> to(%s)', old_sub_path, new_sub_path)
             shutil.move(old_sub_path, new_sub_path)
             entity.save()
 
+            # 강제이동시 Plex Library에서 삭제&새로운경로에 추가되는 영상의 Scan은 Gdrive Scan에 맡김
+            """ 
             if ModelSetting.get_bool('subcat_meta_flag'):
                 # delete old media from plex
                 # 있는걸 지우는 거라, 별도 Thread로 처리할 필요가 없을 듯
@@ -245,6 +260,7 @@ class LogicSubcat(object):
 
                 # refresh가 스캔도 해주나? 
                 LogicSubcat.metadata_refresh(new_media_path, new_sub_path)
+            """
 
         except Exception as e:
             logger.error('Exception:%s', e)
@@ -280,6 +296,7 @@ class LogicSubcat(object):
             #keyword, dname, name, ext = SubModelItem.parse_fname(path)
             #entity = SubModelItem.get_entity(keyword)
             url = entity.sub_url
+            keyword = entity.keyword
         
             r = LogicSubcat.get_response(url)
             if r is None:
@@ -305,23 +322,32 @@ class LogicSubcat(object):
             if force_move_flag and os.path.isdir(force_move_path):
                 logger.info('FORCE Media/sub file move to: %s', force_move_path)
                 
-                new_media_path = os.path.join(force_move_path, entity.media_name)
+                #new_media_path = os.path.join(force_move_path, entity.media_name)
+                new_media_path = LogicSubcat.get_new_media_path(entity.media_path)
+                dst_f = os.path.join(os.path.dirname(new_media_path), fname)
+
+                if ModelSetting.get('subcat_create_keyword_folder'):
+                    new_media_path = os.path.join(os.path.dirname(new_media_path), keyword.upper(), entity.media_name)
+                    dst_f = os.path.join(os.path.dirname(new_media_path), fname)
+
                 logger.info('move media file: from(%s) -> to (%s)', entity.media_path, new_media_path)
                 shutil.move(entity.media_path, new_media_path) 
 
+                # 강제이동시 Plex Library에서 삭제&새로운경로에 추가되는 영상의 Scan은 Gdrive Scan에 맡김
+                """
                 if ModelSetting.get_bool('subcat_meta_flag'):
                     if LogicSubcat.metadata_delete(entity.media_path) is False:
                         logger.warning('failed to delete old media from plex(path:%s)', entity.media_path)
-
+                """
                 # update new path
                 entity.media_path = new_media_path
-                dst_f = os.path.join(force_move_path, fname)
+                entity.sub_status = 33
 
             logger.info('move subfile to: %s' % dst_f)
             shutil.move(tmp_f, dst_f)
             #LogicSubcat.metadata_refresh(filepath=path)
 
-            entity.sub_status = 3
+            entity.sub_status = 3 if entity.sub_status != 33 else 33
             entity.sub_name = fname
             entity.save()
 
@@ -575,3 +601,15 @@ class LogicSubcat(object):
         ret = fpath.replace(tmp2[0], tmp2[1])
         ret = ret.replace('\\', '/') if tmp2[1][0] == '/' else ret.replace('/', '\\')
         return ret
+
+    @staticmethod
+    def get_new_media_path(old_media_path):
+        move_path = ModelSetting.get('subcat_force_move_path')
+        path_rules = ModelSetting.get_list('subcat_force_move_path_rule')
+
+        if move_path.endswith('/'): move_path = move_path[:-1]
+        for path in path_rules:
+            if path.endswith('/'): path = path[:-1]
+            if old_media_path.startswith(path):
+                return old_media_path.replace(path, move_path)
+        return os.path.join(move_path, os.path.basename(old_media_path))

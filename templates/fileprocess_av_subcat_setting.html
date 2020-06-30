@@ -18,6 +18,8 @@
 	<!--{{ macros.setting_checkbox('subcat_include_manual_path_in_scheduler', '스케쥴링에 작업 포함', value=arg['subcat_include_manual_path_in_scheduler'], desc='On : 스케쥴링 작업에 경로대상 실행 작업을 포함합니다.') }}-->
 	{{ macros.setting_checkbox('subcat_force_move_flag', '자막/영상강제이동', value=arg['subcat_force_move_flag'], desc='On: 자막/영상강제이동, Off: 자막을 영상이 있는 폴더로 이동') }}
         {{ macros.setting_input_text('subcat_force_move_path', '자막/영상강제이동경로', desc=['자막파일이 있는경우 영상/자막파일을 강제로 이동할 경로'], value=arg['subcat_force_move_path']) }}
+	{{ macros.setting_checkbox('subcat_create_keyword_folder', '품번폴더 생성여부', value=arg['subcat_create_keyword_folder'], desc='On: 강제이동시 품번폴더 생성, Off: 품번폴더 생성안함') }}
+	{{ macros.setting_input_text('subcat_force_move_path_rule', '자막/영상강제이동규칙', desc=['이동시 원본경로에서 제외할경로 목록(구분자: |)', '원본경로에서 입력된 경로와 매칭되는 경우 강제경로로 바뀜', '원본: /aaa/bbb/ccc.mp4, 규칙: /aaa, 이동: /ccc/korsub, 이동되는경로: /ccc/korsub/bbb/ccc.mp4', ], value=arg['subcat_force_move_path_rule']) }}
 
 	{{ macros.m_hr() }}
 	{{ macros.setting_button_with_info([['subcat_one_execute_btn', '1회실행'],['subcat_force_execute', '강제실행'],['subcat_force_move_btn', '자막/영상강제이동'],['global_reset_db_sub_btn', '목록전체지우기']], left='목록대상 실행', desc=['1회실행: 설정규칙(검색주기, 만료 등)에 따라 1회실행','강제실행: 설정규칙 무시하고 1회 실행(자막있는경우는제외됨)','자막/영상강제이동: 자막있는경우 영상/자막파일을 강제로이동함(목록에있는데이터에 대해서만실행']) }}

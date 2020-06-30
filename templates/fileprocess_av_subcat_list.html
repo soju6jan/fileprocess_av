@@ -12,6 +12,7 @@
             <option value="1">타겟언어자막없음</option>
             <option value="2">자막있음(다운전)</option>
             <option value="3">자막다운완료</option>
+            <option value="33">강제이동완료</option>
             <option value="99">검색실패</option>
             <option value="100">만료</option>
           </select>
@@ -182,6 +183,8 @@ function make_list(data) {
       tmp = '자막있음(다운전)'
     } else if (data[i].sub_status == 3) {
       tmp = '자막다운완료'
+    } else if (data[i].sub_status == 33) {
+      tmp = '강제이동완료'
     } else if (data[i].sub_status == 99) {
       tmp = '검색실패'
     } else if (data[i].sub_status == 100) {

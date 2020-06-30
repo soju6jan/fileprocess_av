@@ -75,6 +75,8 @@ class Logic(object):
         #'subcat_include_manual_path_in_scheduler' : 'True',     # not use
         'subcat_force_move_flag' : 'False',
         'subcat_force_move_path' : '/tmp',
+        'subcat_create_keyword_folder' : 'False',
+        'subcat_force_move_path_rule' : '/tmp',
         'subcat_plex_path_rule' : '',
     }
 
