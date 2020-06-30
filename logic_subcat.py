@@ -308,13 +308,14 @@ class LogicSubcat(object):
                 new_media_path = os.path.join(force_move_path, entity.media_name)
                 logger.info('move media file: from(%s) -> to (%s)', entity.media_path, new_media_path)
                 shutil.move(entity.media_path, new_media_path) 
-                entity.media_path = new_media_path
 
-                dst_f = os.path.join(force_move_path, fname)
-
-                # TODO: plex remove
                 if ModelSetting.get_bool('subcat_meta_flag'):
-                    logger.debug('TODO: remove media on plex ~~`')
+                    if LogicSubcat.metadata_delete(entity.media_path) is False:
+                        logger.warning('failed to delete old media from plex(path:%s)', entity.media_path)
+
+                # update new path
+                entity.media_path = new_media_path
+                dst_f = os.path.join(force_move_path, fname)
 
             logger.info('move subfile to: %s' % dst_f)
             shutil.move(tmp_f, dst_f)
