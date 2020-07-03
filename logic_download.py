@@ -129,7 +129,9 @@ class LogicDownload(object):
             count = 0
             for path in source:
                 filelist = os.listdir(path.strip())
+                logger.debug('FILELIST LEN :%s', len(filelist))
                 for filename in filelist:
+                    logger.debug('CENSORED filename : %s', filename)    
                     file_path = os.path.join(path, filename)
                     if os.path.isdir(file_path):
                         continue
