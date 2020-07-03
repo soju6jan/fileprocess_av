@@ -34,6 +34,7 @@
       {{ macros.setting_input_text('censored_temp_path', '파일명 변경 실패시이동 경로', desc=['파일명 변경을 하지 못하는 영상 파일이 이동할 폴더입니다.'], value=arg['censored_temp_path']) }}
       {{ macros.setting_input_int('censored_min_size', '최소 크기', value=arg['censored_min_size'], placeholder='300', desc=['메가단위', '이 크기보다 작은 파일은 모두 삭제합니다.']) }}
       {{ macros.setting_checkbox('include_original_filename', '원본 파일명 포함', value=arg['include_original_filename'], desc=['On : 파일명 변경시  원본파일명을 포함합니다.', '내용은 같으나 품질이 다른 영상 처리시 유용합니다.']) }}
+      {{ macros.setting_radio('include_original_filename_option', '원본 파일명 형식', ['[원본파일명]', '[원본파일명.파일크기(bytes)]', '[원본파일명.파일크기(휴먼용)]'], value=arg['include_original_filename_option']) }}
       {{ macros.setting_radio('censored_use_meta', '메타 검색 사용', ['사용안함', '레이블 폴더가 없을 경우에만 사용', '모든 파일처리시 사용'], value=arg['censored_use_meta'], desc=['Proxy 설정은 Plex - AV Agent를 통해서 해야합니다.']) }}
       <div id="censored_use_meta_div" class="collapse">
         {{ macros.setting_input_text('censored_meta_dmm_path', 'DMM 매칭시 이동 경로', desc=['DMM 매칭시 레이블 폴더가 생성될 경로입니다.'], value=arg['censored_meta_dmm_path']) }}

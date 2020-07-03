@@ -125,6 +125,7 @@ class LogicDownload(object):
                 FileProcess.remove_small_file_and_move_target(path, ModelSetting.get_int('censored_min_size'))
 
             include_original_filename = ModelSetting.get_bool('include_original_filename')
+            include_original_filename_option = ModelSetting.get_bool('include_original_filename_option')
             count = 0
             for path in source:
                 filelist = os.listdir(path.strip())
@@ -153,7 +154,7 @@ class LogicDownload(object):
                             # 같이 시작하더라도 [] 가 없다면... 변경
                             # [] 없거나, 시작이 다르면..  완벽히 일치 하지 않으면
                             if filename != newfilename and ((filename.find('[') == -1 or filename.find(']') == -1) or not os.path.splitext(filename)[0].startswith(os.path.splitext(newfilename)[0])):
-                                newfilename = FileProcess.change_filename_censored_by_save_original(include_original_filename, filename, newfilename)
+                                newfilename = FileProcess.change_filename_censored_by_save_original(include_original_filename, filename, newfilename, option=include_original_filename_option)
                             else:
                                 # 이미 한번 파일처리를 한것으로 가정하여 변경하지 않는다.
                                 newfilename = filename

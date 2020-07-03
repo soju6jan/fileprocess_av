@@ -38,6 +38,7 @@ class Logic(object):
         'censored_meta_javdb_path' : '',
         'censored_meta_no_path' : '',
         'include_original_filename' : 'True',
+        'include_original_filename_option' : '0',
 
         'uncensored_use' : 'False',
         'uncensored_use_meta' : 'False',
@@ -149,7 +150,6 @@ class Logic(object):
         if sub == 'download':
             LogicDownload.scheduler_function()
         elif sub == 'subcat':
-            logger.debug('1111111111111111111')
             LogicSubcat.scheduler_function()
 
 
