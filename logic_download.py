@@ -125,7 +125,7 @@ class LogicDownload(object):
                 FileProcess.remove_small_file_and_move_target(path, ModelSetting.get_int('censored_min_size'))
 
             include_original_filename = ModelSetting.get_bool('include_original_filename')
-            include_original_filename_option = ModelSetting.get_bool('include_original_filename_option')
+            include_original_filename_option = ModelSetting.get('include_original_filename_option')
             count = 0
             for path in source:
                 filelist = os.listdir(path.strip())
