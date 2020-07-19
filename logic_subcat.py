@@ -395,6 +395,10 @@ class LogicSubcat(object):
                 logger.debug('search for lang(%s)' % lang)
                 for tr in trs:
                     if tr.find('td') is None: continue
+                    # subtitlecat 변경 대응
+                    if tr.td.a.text.lower().startswith(key.lower()) is False:
+                        continue
+
                     rx = regx.search(tr.td.text)
                     if rx is None: 
                         logger.info('not found subfile for target lang(key:%s, lang:%s)', key, lang)
