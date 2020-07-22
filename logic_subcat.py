@@ -362,8 +362,10 @@ class LogicSubcat(object):
     def get_suburl(entity):
         try:
             key = entity.keyword
+            # 검색키워드 변경 SSNI-123 -> SSNI+123 
+            search_key = key.replace('-', '+')
             SURL = '/index.php?search={keyword}'
-            url = ModelSetting.get('subcat_url') + SURL.format(keyword=key)
+            url = ModelSetting.get('subcat_url') + SURL.format(keyword=search_key)
             logger.debug('try to search sublist (%s), url(%s)', key, url)
 
             #entity = SubModelItem.get_entity(key)
