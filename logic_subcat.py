@@ -363,7 +363,7 @@ class LogicSubcat(object):
         try:
             key = entity.keyword
             # 검색키워드 변경 SSNI-123 -> SSNI+123 
-            search_key = key.replace('-', '+').
+            search_key = key.replace('-', '+')
             SURL = '/index.php?search={keyword}'
             url = ModelSetting.get('subcat_url') + SURL.format(keyword=search_key)
             logger.debug('try to search sublist (%s), url(%s)', key, url)
