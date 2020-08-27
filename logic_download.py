@@ -258,7 +258,7 @@ class LogicDownload(object):
 
             no_type_path = ModelSetting.get('uncensored_temp_path')
             if len(source) == 0 or len(target) == 0 or no_type_path == '':
-                logger.info('Error censored. path info is empty')
+                logger.info('Error uncensored. path info is empty')
                 return
             # 쓰레기 정리
             for path in source:
