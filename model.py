@@ -196,7 +196,7 @@ class ModelItem(db.Model):
             ret['list'] = [item.as_dict() for item in lists]
             ret['paging'] = Util.get_paging_info(count, page, page_size)
             return ret
-        except Exception, e:
+        except Exception as e:
             logger.error('Exception:%s', e)
             logger.error(traceback.format_exc())
 
@@ -326,7 +326,7 @@ class SubModelItem(db.Model):
                 entity.save()
                 return entity
             return None
-        except Exception, e:
+        except Exception as e:
             logger.error('Exception:%s', e)
             logger.error(traceback.format_exc())
 
@@ -367,7 +367,7 @@ class SubModelItem(db.Model):
             item.save()
             logger.debug('new file added(%s)', target_filepath)
             return True
-        except Exception, e:
+        except Exception as e:
             logger.error('Exception:%s', e)
             logger.error(traceback.format_exc())
             return False
@@ -433,7 +433,7 @@ class SubModelItem(db.Model):
 
             return entities
 
-        except Exception, e:
+        except Exception as e:
             logger.error('Exception:%s', e)
             logger.error(traceback.format_exc())
             return None
@@ -448,7 +448,7 @@ class SubModelItem(db.Model):
             entities = query.all()
             return entities
 
-        except Exception, e:
+        except Exception as e:
             logger.error('Exception:%s', e)
             logger.error(traceback.format_exc())
             return None
@@ -471,7 +471,7 @@ class SubModelItem(db.Model):
             entities = query.all()
             return entities
 
-        except Exception, e:
+        except Exception as e:
             logger.error('Exception:%s', e)
             logger.error(traceback.format_exc())
             return None
@@ -499,7 +499,7 @@ class SubModelItem(db.Model):
             ret['list'] = [item.as_dict() for item in lists]
             ret['paging'] = Util.get_paging_info(count, page, page_size)
             return ret
-        except Exception, e:
+        except Exception as e:
             logger.error('Exception:%s', e)
             logger.error(traceback.format_exc())
 
