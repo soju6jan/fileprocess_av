@@ -327,7 +327,11 @@ class LogicDownload(object):
                                 
                                 match = re.search(r'[-_](?P<no>[A-Z])$', os.path.splitext(filename)[0])
                                 if match:
-                                    no = ord(match.group('no')) - ord('A') + 1
+                                    if app.config['config']['is_py2']:
+                                        no = ord(match.group('no')) - ord('A') + 1
+                                    else:
+                                        no = match.group('no') - 'A' + 1
+                                    
                                     newfilename = filename.replace('%s%s' % (code, match.group(0)), '%scd%s' % (code, no))
                                     logger.debug('filename : %s', newfilename)
 
