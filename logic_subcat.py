@@ -15,12 +15,6 @@ import urllib
 import requests
 from flask import jsonify
 
-try:
-    from bs4 import BeautifulSoup
-except:
-    os.system('pip install bs4')
-    from bs4 import BeautifulSoup
-
 # sjva 공용
 from framework import app, db, scheduler, path_app_root, celery
 from framework.job import Job
@@ -361,6 +355,12 @@ class LogicSubcat(object):
     @staticmethod
     def get_suburl(entity):
         try:
+            try:
+                from bs4 import BeautifulSoup
+            except:
+                os.system("{} install bs4".format(app.config['config']['pip']))
+                from bs4 import BeautifulSoup
+          
             key = entity.keyword
             # 검색키워드 변경 SSNI-123 -> SSNI+123 
             search_key = key.replace('-', '+')
