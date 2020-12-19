@@ -375,7 +375,7 @@ class LogicSubcat(object):
 
             r = LogicSubcat.get_response(url)
             if r is None:
-                print 'failed to get sublist(key:%s, url:%s)' %(key, url)
+                print('failed to get sublist(key:%s, url:%s)' % (key, url))
                 entity.sub_status = 99
                 entity.save()
                 return None
@@ -383,7 +383,7 @@ class LogicSubcat(object):
             soup = BeautifulSoup(r.text, "html.parser")
             tab  = soup.find('table', {'class':'table table_index table-hover'})
             if tab.find('td') is None: 
-                print 'sub file does not exist(key:%s)' % key
+                print('sub file does not exist(key:%s)' % key)
                 entity.sub_status = 0
                 entity.save()
                 return None
